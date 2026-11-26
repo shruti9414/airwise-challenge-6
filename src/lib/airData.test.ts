@@ -1,17 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CACHE_TTL_MS, currentReading, isStale, loadLive, parseAirQuality, readCache, sampleData, searchPlaces } from './airData'
+import { CACHE_TTL_MS, currentReading, isStale, isValidAirData, loadLive, parseAirQuality, readCache, sampleData, searchPlaces } from './airData'
 import type { Place } from '../types'
 
 const place: Place = { name: 'Delhi', lat: 28.61, lon: 77.21, kind: 'city' }
-const hours = (n: number) => Array.from({ length: n }, (_, i) => `2026-11-26T${String(i % 24).padStart(2, '0')}:00`)
+const hours = (n: number) => Array.from({ length: n }, (_, i) => `2026-11-${i < 24 ? 25 : 26}T${String(i % 24).padStart(2, '0')}:00`)
 const payload = (pm25 = 120) => ({
   utc_offset_seconds: 19800,
   current: { time: '2026-11-26T10:00' },
   hourly: {
-    time: hours(24), pm2_5: Array(24).fill(pm25), pm10: Array(24).fill(200), nitrogen_dioxide: Array(24).fill(40),
-    ozone: Array(24).fill(30), sulphur_dioxide: Array(24).fill(10), carbon_monoxide: Array(24).fill(600),
+    time: hours(48), pm2_5: Array(48).fill(pm25), pm10: Array(48).fill(200), nitrogen_dioxide: Array(48).fill(40),
+    ozone: Array(48).fill(30), sulphur_dioxide: Array(48).fill(10), carbon_monoxide: Array(48).fill(600),
   },
 })
+const CACHE_KEY = 'airwise:cache:28.61,77.21'
 const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response
 
 beforeEach(() => localStorage.clear())
@@ -21,9 +22,29 @@ describe('air data parsing', () => {
   it('parses a valid response and locates the current hour', () => {
     const d = parseAirQuality(payload(), null, 0)
     expect(d.source).toBe('live')
-    expect(d.nowIndex).toBe(10)
+    expect(d.nowIndex).toBe(34)
     expect(d.observedAt).toBe(Date.UTC(2026, 10, 26, 10, 0) - 19800 * 1000)
     expect(currentReading(d).band).toBe('poor')
+  })
+
+  it('builds the headline AQI from CPCB averages, not from the current hour', () => {
+    const p = payload()
+    p.hourly.pm2_5 = Array.from({ length: 48 }, (_, i) => (i < 24 ? 200 : 20))
+    const r = currentReading(parseAirQuality(p, null, 0))
+    expect(r.pollutants.pm25).toBeCloseTo(117.5)
+    expect(r.band).toBe('poor')
+  })
+
+  it('shows the AQI as unavailable when there are fewer than 16 hours of data', () => {
+    const early = payload()
+    early.current.time = '2026-11-25T10:00'
+    expect(currentReading(parseAirQuality(early, null, 0))).toMatchObject({ aqi: null, band: null })
+  })
+
+  it('shows the AQI as unavailable with fewer than three pollutants', () => {
+    const p = payload()
+    for (const k of ['nitrogen_dioxide', 'ozone', 'sulphur_dioxide', 'carbon_monoxide'] as const) p.hourly[k] = Array(48).fill(null)
+    expect(currentReading(parseAirQuality(p, null, 0)).aqi).toBeNull()
   })
 
   it('rejects malformed payloads', () => {
@@ -33,8 +54,8 @@ describe('air data parsing', () => {
 
   it('treats non-numeric values as missing', () => {
     const p = payload()
-    ;(p.hourly.pm2_5 as unknown[])[10] = 'x'
-    expect(parseAirQuality(p, null).hourly[10]!.pm25).toBeNull()
+    ;(p.hourly.pm2_5 as unknown[])[34] = 'x'
+    expect(parseAirQuality(p, null).hourly[34]!.pm25).toBeNull()
   })
 })
 
@@ -65,6 +86,42 @@ describe('live loading, caching and errors', () => {
     const r = await loadLive(place)
     expect(r.fromCache).toBe(true)
     expect(readCache(place)?.fresh).toBe(false)
+  })
+
+  it.each([['unreadable JSON', '{bad'], ['null', 'null'], ['an array', '[]'], ['a string', '"x"']])('ignores a cache entry that is %s', (_, raw) => {
+    localStorage.setItem(CACHE_KEY, raw)
+    expect(readCache(place)).toBeNull()
+  })
+
+  it('accepts a well-formed cache entry and rejects every corrupted variant of it', () => {
+    const good = parseAirQuality(payload(), { temperature: 10, humidity: 50, windSpeed: 3 }, 0)
+    localStorage.setItem(CACHE_KEY, JSON.stringify(good))
+    expect(readCache(place)?.data.nowIndex).toBe(34)
+    const bad: Record<string, unknown> = {
+      'sample source': { ...good, source: 'sample' },
+      'nowIndex out of range': { ...good, nowIndex: 999 },
+      'fractional nowIndex': { ...good, nowIndex: 1.5 },
+      'hourly shorter than times': { ...good, hourly: good.hourly.slice(0, 5) },
+      'no hourly rows': { ...good, times: [], hourly: [] },
+      'text pollutant value': { ...good, hourly: good.hourly.map((h, i) => (i === 3 ? { ...h, pm25: 'x' } : h)) },
+      'missing pollutant key': { ...good, hourly: good.hourly.map((h, i) => (i === 3 ? { pm25: 1 } : h)) },
+      'malformed timestamp': { ...good, times: good.times.map((t, i) => (i === 0 ? 'not a time' : t)) },
+      'invalid fetchedAt': { ...good, fetchedAt: 'yesterday' },
+      'broken weather': { ...good, weather: { temperature: 'hot' } },
+    }
+    for (const [name, value] of Object.entries(bad)) {
+      expect(isValidAirData(value), name).toBe(false)
+      localStorage.setItem(CACHE_KEY, JSON.stringify(value))
+      expect(readCache(place), name).toBeNull()
+    }
+  })
+
+  it('refetches instead of using a corrupt cache entry', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ source: 'live', hourly: 'oops' }))
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (u: string) => ok(u.includes('air-quality') ? payload() : {})))
+    const r = await loadLive(place)
+    expect(r.fromCache).toBe(false)
+    expect(r.data.hourly).toHaveLength(48)
   })
 
   it('ignores corrupt cache entries', () => {

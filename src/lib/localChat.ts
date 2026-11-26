@@ -57,7 +57,7 @@ export function answerLocally({ data, reading, profile }: Context, question: str
       return { answer: `${base} ${guidance === 'normal' ? 'Normal outdoor exercise is fine.' : guidance === 'reduce' ? 'Keep outdoor exercise short and easy.' : 'Move exercise indoors today.'}`,
         steps: [...(winText && guidance !== 'normal' ? [`Cleanest outdoor window today: ${winText}`] : []), 'Try indoor yoga, stretching or stair climbing', 'Avoid exercising beside heavy traffic'] }
     case 'time':
-      return { answer: winText ? `${base} The lowest forecast AQI for the rest of today is around ${winText} (about ${win?.aqi}).` : `${base} No cleaner window is forecast for the rest of today.`,
+      return { answer: winText ? `${base} The cleanest modelled window for the rest of today is around ${winText}.` : `${base} No cleaner window is forecast for the rest of today.`,
         steps: ['Plan outdoor time for the cleanest window', 'Recheck the forecast later today'] }
     case 'outside':
       return { answer: `${base} ${guidance === 'normal' ? 'Normal outdoor activity is fine.' : guidance === 'reduce' ? 'Keep outdoor exertion short.' : 'Keep outdoor trips short and essential.'} ${care}`,

@@ -1,5 +1,5 @@
-import type { AirData, Place, Pollutants, Weather } from '../types'
-import { computeReading } from './aqi'
+import type { AirData, Place, Pollutant, Pollutants, Weather } from '../types'
+import { averagedPollutants, computeReading } from './aqi'
 
 const AQ_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast'
@@ -58,12 +58,27 @@ async function fetchWeather(place: Place, signal?: AbortSignal): Promise<Weather
 
 const cacheKey = (p: Place) => `${CACHE_PREFIX}${p.lat.toFixed(2)},${p.lon.toFixed(2)}`
 
+const POLLUTANT_KEYS: Pollutant[] = ['pm25', 'pm10', 'no2', 'o3', 'so2', 'co']
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+
+/** Strict shape check for cached data: anything corrupted, truncated or tampered is rejected. */
+export function isValidAirData(v: unknown): v is AirData {
+  const d = v as Partial<AirData> | null
+  if (typeof d !== 'object' || d === null || d.source !== 'live' || !isNum(d.observedAt) || !isNum(d.fetchedAt)) return false
+  if (!Array.isArray(d.times) || !Array.isArray(d.hourly) || d.times.length === 0 || d.times.length !== d.hourly.length) return false
+  if (!d.times.every((t) => typeof t === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(t))) return false
+  if (!d.hourly.every((h) => typeof h === 'object' && h !== null && POLLUTANT_KEYS.every((k) => h[k] === null || isNum(h[k])))) return false
+  if (!Number.isInteger(d.nowIndex) || (d.nowIndex as number) < 0 || (d.nowIndex as number) >= d.times.length) return false
+  const w = d.weather
+  return w === null || (typeof w === 'object' && isNum(w.temperature) && isNum(w.humidity) && isNum(w.windSpeed))
+}
+
 export function readCache(place: Place, now = Date.now()): { data: AirData; fresh: boolean } | null {
   try {
     const raw = localStorage.getItem(cacheKey(place))
     if (!raw) return null
-    const data = JSON.parse(raw) as AirData
-    if (data.source !== 'live' || !Array.isArray(data.hourly)) return null
+    const data: unknown = JSON.parse(raw)
+    if (!isValidAirData(data)) return null
     return { data, fresh: now - data.fetchedAt < CACHE_TTL_MS }
   } catch {
     return null
@@ -113,18 +128,14 @@ export function sampleData(now = new Date()): AirData {
   }
 }
 
-export const readingAt = (d: AirData, i: number) => computeReading(d.hourly[i] as Pollutants)
+/** The headline AQI estimate: every pollutant uses its trailing CPCB averaging window and sufficiency rules. */
+export const currentReading = (d: AirData) => computeReading(averagedPollutants(d.hourly, d.nowIndex))
 
-/** Current reading: PM values use the trailing 24 h mean (CPCB averaging), gases use the current hour. */
-export function currentReading(d: AirData) {
-  const now = d.hourly[d.nowIndex] as Pollutants
-  const window = d.hourly.slice(Math.max(0, d.nowIndex - 23), d.nowIndex + 1)
-  const mean = (key: 'pm25' | 'pm10'): Num => {
-    const vals = window.map((p) => p[key]).filter((v): v is number => v !== null)
-    return vals.length >= 12 ? vals.reduce((a, b) => a + b, 0) / vals.length : now[key]
-  }
-  return computeReading({ ...now, pm25: mean('pm25'), pm10: mean('pm10') })
-}
+/**
+ * Hourly outlook index from one hour's modelled concentrations. Not a CPCB AQI: it exists only to show how
+ * conditions vary through the day (trend, cleanest window, period outlook), which rolling averages would hide.
+ */
+export const outlookAt = (d: AirData, i: number) => computeReading(d.hourly[i] as Pollutants)
 
 export interface GeoResult { name: string; lat: number; lon: number; admin: string }
 

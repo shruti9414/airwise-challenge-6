@@ -8,6 +8,9 @@ export const MODE_LABEL: Record<TripMode, string> = {
 }
 export const POINTS = { trip: 10, habit: 5, cap: 100 }
 
+/** Own-property check: inherited keys such as "toString" or "__proto__" are not valid modes. */
+export const isTripMode = (v: unknown): v is TripMode => typeof v === 'string' && Object.hasOwn(MODE_FACTOR, v)
+
 export const dayKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -51,9 +54,9 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 
 /** Validates a trip form entry; returns an error message or the cleaned trip fields. */
 export function validateTrip(mode: string, kmText: string): { error: string } | { mode: TripMode; km: number } {
-  if (!(mode in MODE_FACTOR)) return { error: 'Choose how you travelled.' }
+  if (!isTripMode(mode)) return { error: 'Choose how you travelled.' }
   const km = Number(kmText)
   if (kmText.trim() === '' || !Number.isFinite(km)) return { error: 'Enter the distance in kilometres.' }
   if (km <= 0 || km > 200) return { error: 'Distance must be between 0.1 and 200 km.' }
-  return { mode: mode as TripMode, km: round1(Math.max(km, 0.1)) }
+  return { mode, km: round1(Math.max(km, 0.1)) }
 }

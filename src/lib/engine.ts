@@ -1,6 +1,6 @@
 import type { Advice, AirData, Alert, BandId, Guidance, Period, Profile, Reading, Routine, RoutineItem } from '../types'
 import { BANDS, GUIDANCE_LABEL, WHO_PM25_24H, bandFor, guidanceFor } from './aqi'
-import { currentReading, isStale, readingAt } from './airData'
+import { currentReading, isStale, outlookAt } from './airData'
 
 export interface Context {
   data: AirData
@@ -42,7 +42,7 @@ function todayIndexes(d: AirData): number[] {
 export function periodOutlook(d: AirData, period: Period): { aqi: number; band: BandId } | null {
   const vals = todayIndexes(d)
     .filter((i) => PERIODS[period].hours.includes(hourOf(d.times[i] as string)))
-    .map((i) => readingAt(d, i).aqi)
+    .map((i) => outlookAt(d, i).aqi)
     .filter((v): v is number => v !== null)
   if (vals.length === 0) return null
   const aqi = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
@@ -52,7 +52,7 @@ export function periodOutlook(d: AirData, period: Period): { aqi: number; band: 
 /** Two-hour window (today, 6 am–9 pm, not already over) with the lowest forecast AQI. */
 export function bestWindow(d: AirData): { start: number; end: number; aqi: number; band: BandId } | null {
   const hour = currentHour(d)
-  const byHour = new Map(todayIndexes(d).map((i) => [hourOf(d.times[i] as string), readingAt(d, i).aqi]))
+  const byHour = new Map(todayIndexes(d).map((i) => [hourOf(d.times[i] as string), outlookAt(d, i).aqi]))
   let best: { start: number; aqi: number } | null = null
   for (let s = Math.max(6, hour); s <= 19; s++) {
     const a = byHour.get(s), b = byHour.get(s + 1)
@@ -82,7 +82,7 @@ export function buildAdvice({ data, reading, profile }: Context): Advice {
   const who = household(profile)
 
   const analysis = aqi === null
-    ? 'Particulate readings (PM2.5/PM10) are unavailable, so AirWise cannot compute an Indian AQI. Treat the guidance below as cautious defaults and check an official local source.'
+    ? 'There is not enough valid pollutant data (PM2.5 or PM10, plus at least three pollutants over their CPCB averaging periods), so an Indian AQI estimate is unavailable. Treat the guidance below as cautious defaults and check an official local source.'
     : `The Indian AQI is ${aqi} (${label(band)})${dominant ? `, driven mainly by ${dominant === 'pm25' ? 'PM2.5' : dominant === 'pm10' ? 'PM10' : dominant.toUpperCase()}` : ''}.` +
       (pm25 !== null ? ` PM2.5 averages ${Math.round(pm25)} µg/m³, about ${(pm25 / WHO_PM25_24H).toFixed(1)}× the WHO 24-hour guideline of ${WHO_PM25_24H} µg/m³.` : '') +
       (calm && high ? ' Winds are light, so pollution is not dispersing quickly.' : '') +
@@ -141,7 +141,7 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
   const ctxFor = (p: Period) => {
     const o = periodOutlook(data, p)
     const band = o?.band ?? reading.band
-    return { band, g: guidanceFor(band, sensitive), note: o ? `${label(o.band)} outlook (AQI ≈ ${o.aqi})` : `current ${label(reading.band)} reading` }
+    return { band, g: guidanceFor(band, sensitive), note: o ? `${label(o.band)} outlook (index ≈ ${o.aqi})` : `current ${label(reading.band)} reading` }
   }
   const car = profile.commute === 'car' || profile.commute === 'twoWheeler'
   const m = ctxFor('morning'), a = ctxFor('afternoon'), e = ctxFor('evening')
@@ -166,7 +166,7 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
   const afternoon = [
     win && item('exposure:afternoon-window',
       `Plan outdoor time for ${fmtHour(win.start)}–${fmtHour(win.end)}.`,
-      `This is the lowest forecast AQI window today (≈ ${win.aqi}, ${label(win.band)}); sunlight and warmth usually disperse pollution.`),
+      `This is the lowest forecast outlook window today (index ≈ ${win.aqi}, ${label(win.band)}); sunlight and warmth usually disperse pollution.`),
     a.g !== 'normal' && profile.activity !== 'minimal' && item('movement:afternoon-indoor',
       'Do 20–30 minutes of indoor exercise: yoga, stretching or stairs.',
       `Outdoor effort at ${a.note} means deeper breathing of polluted air.`),
@@ -206,9 +206,9 @@ export function buildAlerts({ data, reading, profile, now = Date.now() }: Contex
     alerts.push({ id: 'pm25', severity: pm25 > 120 ? 'critical' : 'warning', title: `High PM2.5: ${Math.round(pm25)} µg/m³`, detail: `That is ${(pm25 / WHO_PM25_24H).toFixed(1)}× the WHO 24-hour guideline and above the Indian 24-hour standard of 60 µg/m³.` })
   }
   const sensitive = isSensitive(profile)
-  const base = guidanceFor(readingAt(data, data.nowIndex).band, sensitive)
+  const base = guidanceFor(outlookAt(data, data.nowIndex).band, sensitive)
   for (let i = data.nowIndex + 1; i <= Math.min(data.nowIndex + 6, data.hourly.length - 1); i++) {
-    const g = guidanceFor(readingAt(data, i).band, sensitive)
+    const g = guidanceFor(outlookAt(data, i).band, sensitive)
     if (g !== base) {
       alerts.push({ id: 'change', severity: 'info', title: `Outdoor guidance changes around ${fmtHour(hourOf(data.times[i] as string))}`, detail: `Forecast moves from “${GUIDANCE_LABEL[base]}” to “${GUIDANCE_LABEL[g]}”.` })
       break

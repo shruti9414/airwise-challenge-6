@@ -33,6 +33,13 @@ describe('local storage handling', () => {
     expect(s.joined).toEqual([])
   })
 
+  it('rejects trip modes that are inherited object keys, not real modes', () => {
+    const trip = (mode: string) => ({ id: mode, date: '2026-11-26', mode, km: 2 })
+    const modes = ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'valueOf', '']
+    expect(sanitizeSaved({ trips: modes.map(trip) }).trips).toEqual([])
+    expect(sanitizeSaved({ trips: [trip('walk'), trip('toString')] }).trips.map((t) => t.mode)).toEqual(['walk'])
+  })
+
   it('never persists a device-detected location', () => {
     persist({ ...DEFAULT_SAVED, place: { name: 'Your location (approx.)', lat: 1.23, lon: 4.56, kind: 'geo' } })
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('1.23')

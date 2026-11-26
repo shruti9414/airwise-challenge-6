@@ -40,6 +40,7 @@ describe('impact calculations', () => {
     expect(validateTrip('walk', '0')).toHaveProperty('error')
     expect(validateTrip('walk', '999')).toHaveProperty('error')
     expect(validateTrip('teleport', '3')).toHaveProperty('error')
+    for (const m of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) expect(validateTrip(m, '3')).toHaveProperty('error')
     expect(validateTrip('cycle', '2.46')).toEqual({ mode: 'cycle', km: 2.5 })
   })
 })

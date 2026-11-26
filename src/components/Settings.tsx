@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { Place, Profile } from '../types'
+import { AQI_NOTE } from '../lib/aqi'
 import LocationPicker from './LocationPicker'
 import { ProfileForm } from './Assistant'
 import { Modal } from './ui'
@@ -34,7 +35,7 @@ export default function Settings({ place, profile, useSample, onPlace, onProfile
           <li>No account, backend or database. Preferences, daily checklist, trip log and cached air data are stored only in this browser’s localStorage.</li>
           <li>No exact address is collected. Detected locations are rounded to about 1 km, used for the data request only and never saved.</li>
           <li>The optional AI key is kept in memory only. See the AI panel for exactly what is sent.</li>
-          <li>AQI is computed with CPCB (India) breakpoints from modelled pollutant concentrations, using the worst sub-index. Official monitor readings may differ.</li>
+          <li>{AQI_NOTE} It uses the worst sub-index, 24-hour means (PM2.5, PM10, NO₂, SO₂) and 8-hour means (CO, O₃), and needs PM2.5 or PM10 plus at least three pollutants with enough valid hours.</li>
         </ul>
         <button className="btn danger" onClick={() => setConfirm(true)}><RotateCcw size={18} aria-hidden="true" />Reset all saved data</button>
       </div>

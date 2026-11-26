@@ -1,8 +1,8 @@
 import { BellRing, DatabaseZap, MapPin, RefreshCw } from 'lucide-react'
 import type { Alert, AirData, Pollutant, Place, Profile, Reading } from '../types'
 import type { AirState } from '../hooks'
-import { BANDS, POLLUTANT_LABEL, POLLUTANT_UNIT, bandFor, guidanceFor, GUIDANCE_LABEL, subIndex, toDisplayUnit } from '../lib/aqi'
-import { isStale, readingAt } from '../lib/airData'
+import { AQI_NOTE, BANDS, POLLUTANT_LABEL, POLLUTANT_UNIT, bandFor, guidanceFor, GUIDANCE_LABEL, subIndex, toDisplayUnit } from '../lib/aqi'
+import { isStale, outlookAt } from '../lib/airData'
 import { fmtHour, isSensitive } from '../lib/engine'
 import LocationPicker from './LocationPicker'
 import { BandBadge, Empty } from './ui'
@@ -36,26 +36,26 @@ function Gauge({ aqi, reading }: { aqi: number | null; reading: Reading }) {
 
 function Trend({ data }: { data: AirData }) {
   const day = (data.times[data.nowIndex] ?? '').slice(0, 10)
-  const rows = data.times.flatMap((t, i) => (t.startsWith(day) ? [{ h: hourOf(t), aqi: readingAt(data, i).aqi, now: i === data.nowIndex }] : []))
+  const rows = data.times.flatMap((t, i) => (t.startsWith(day) ? [{ h: hourOf(t), aqi: outlookAt(data, i).aqi, now: i === data.nowIndex }] : []))
   const valid = rows.filter((r): r is typeof r & { aqi: number } => r.aqi !== null)
   if (valid.length === 0) return <Empty>No hourly trend available for today.</Empty>
   const max = Math.max(...valid.map((r) => r.aqi), 100)
   const lo = valid.reduce((a, b) => (b.aqi < a.aqi ? b : a)), hi = valid.reduce((a, b) => (b.aqi > a.aqi ? b : a))
   return (
     <div className="trend">
-      <h3>Today’s hourly trend</h3>
-      <svg viewBox="0 0 240 80" preserveAspectRatio="none" role="img" aria-label={`Hourly AQI today. Cleanest at ${fmtHour(lo.h)} (${lo.aqi}), highest at ${fmtHour(hi.h)} (${hi.aqi}).`}>
+      <h3>Today’s hourly outlook</h3>
+      <svg viewBox="0 0 240 80" preserveAspectRatio="none" role="img" aria-label={`Hourly outlook index today. Cleanest at ${fmtHour(lo.h)} (${lo.aqi}), highest at ${fmtHour(hi.h)} (${hi.aqi}).`}>
         {rows.map((r) => r.aqi !== null && (
           <rect key={r.h} x={r.h * 10 + 1} width="8" y={76 - (r.aqi / max) * 70} height={(r.aqi / max) * 70} rx="2" className={`bar bar-${bandFor(r.aqi)?.id}${r.now ? ' now' : ''}`} />
         ))}
       </svg>
-      <p className="hint">Cleanest: {fmtHour(lo.h)} (AQI {lo.aqi}) · Highest: {fmtHour(hi.h)} (AQI {hi.aqi}). Outlined bar = current hour.</p>
+      <p className="hint">Cleanest: {fmtHour(lo.h)} (index {lo.aqi}) · Highest: {fmtHour(hi.h)} (index {hi.aqi}). Outlined bar = current hour. This is an hourly outlook index from modelled values to show how the day varies; it is not a CPCB AQI.</p>
       <details>
         <summary>View hourly values as a table</summary>
         <div className="table-wrap">
           <table>
-            <caption className="sr-only">Hourly Indian AQI today</caption>
-            <thead><tr><th scope="col">Hour</th><th scope="col">AQI</th><th scope="col">Category</th></tr></thead>
+            <caption className="sr-only">Hourly outlook index today (not a CPCB AQI)</caption>
+            <thead><tr><th scope="col">Hour</th><th scope="col">Index</th><th scope="col">Category</th></tr></thead>
             <tbody>{valid.map((r) => <tr key={r.h}><th scope="row">{fmtHour(r.h)}</th><td>{r.aqi}</td><td>{bandFor(r.aqi)?.label}</td></tr>)}</tbody>
           </table>
         </div>
@@ -107,7 +107,8 @@ export default function Overview({ state, place, reading, data, alerts, profile,
                 <div>
                   <BandBadge band={reading.band} />
                   <p className="guidance">{guidance && GUIDANCE_LABEL[guidance]}</p>
-                  <p className="muted">{BANDS.find((b) => b.id === reading.band)?.health ?? 'Particulate data is missing, so no AQI can be computed.'}</p>
+                  <p className="muted">{BANDS.find((b) => b.id === reading.band)?.health ?? 'There is not enough valid pollutant data to estimate an AQI.'}</p>
+                  <p className="hint">{AQI_NOTE}</p>
                   <dl className="meta">
                     <div><dt>Main pollutant</dt><dd>{reading.dominant ? POLLUTANT_LABEL[reading.dominant] : 'Unavailable'}</dd></div>
                     <div><dt>Observation time</dt><dd>{fmtTime(data.observedAt)}</dd></div>
@@ -137,7 +138,7 @@ export default function Overview({ state, place, reading, data, alerts, profile,
                   )
                 })}
               </ul>
-              <p className="hint">PM2.5 and PM10 use the trailing 24-hour mean; gases use the current hour. Sub-index shown in brackets.</p>
+              <p className="hint">CPCB averaging: 24-hour mean for PM2.5, PM10, NO₂ and SO₂; 8-hour mean for CO and O₃. “n/a” means too few valid hours. Sub-index shown in brackets.</p>
             </>
           )}
           <details className="loc-details">

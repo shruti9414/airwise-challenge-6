@@ -58,13 +58,33 @@ export function subIndex(p: Pollutant, conc: number | null): number | null {
 export const bandFor = (aqi: number | null): Band | null =>
   aqi === null || !Number.isFinite(aqi) || aqi < 0 ? null : (BANDS.find((b) => aqi <= b.max) ?? (BANDS[5] as Band))
 
-/** CPCB rule: the AQI is the worst sub-index, and needs PM2.5 or PM10 to be available. */
+export const AQI_NOTE = 'CPCB breakpoint-based AQI estimate using modelled air-quality data. Not an official CPCB station reading.'
+
+/** CPCB averaging periods in hours: 24 h for PM2.5, PM10, NO₂, SO₂; 8 h for CO and O₃. */
+export const AVERAGING_HOURS: Record<Pollutant, number> = { pm25: 24, pm10: 24, no2: 24, so2: 24, co: 8, o3: 8 }
+export const MIN_SUB_INDICES = 3
+
+/**
+ * Trailing mean of each pollutant over its CPCB averaging period ending at index `end`.
+ * A pollutant needs at least two thirds of the window as valid hours (16 of 24, 6 of 8), otherwise it is null.
+ */
+export function averagedPollutants(hourly: Pollutants[], end: number): Pollutants {
+  const out = {} as Pollutants
+  for (const p of Object.keys(AVERAGING_HOURS) as Pollutant[]) {
+    const hours = AVERAGING_HOURS[p]
+    const vals = hourly.slice(Math.max(0, end - hours + 1), end + 1).map((h) => h[p]).filter((v): v is number => v !== null && Number.isFinite(v))
+    out[p] = vals.length >= Math.ceil((hours * 2) / 3) ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  return out
+}
+
+/** CPCB rule: the AQI is the worst sub-index; it needs at least 3 sub-indices, including PM2.5 or PM10. */
 export function computeReading(pollutants: Pollutants): Reading {
   const subs = (Object.keys(pollutants) as Pollutant[])
     .map((p) => ({ p, v: subIndex(p, pollutants[p]) }))
     .filter((s): s is { p: Pollutant; v: number } => s.v !== null)
   const hasPm = subs.some((s) => s.p === 'pm25' || s.p === 'pm10')
-  if (!hasPm) return { aqi: null, band: null, dominant: null, pollutants }
+  if (!hasPm || subs.length < MIN_SUB_INDICES) return { aqi: null, band: null, dominant: null, pollutants }
   const worst = subs.reduce((a, b) => (b.v > a.v ? b : a))
   return { aqi: worst.v, band: bandFor(worst.v)?.id ?? null, dominant: worst.p, pollutants }
 }

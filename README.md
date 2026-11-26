@@ -25,12 +25,12 @@ AirWise turns a live AQI reading into a personalised, explainable plan: how poll
 
 | Area | What it does |
 |---|---|
-| **Overview** | Live Indian AQI gauge (CPCB scale), category, dominant pollutant, PM2.5/PM10/NO₂/O₃/SO₂/CO with sub-indices, weather, observation time, source, hourly trend chart (with accessible table). Loading, error, stale and sample states. |
+| **Overview** | Live Indian AQI gauge (CPCB scale), category, dominant pollutant, PM2.5/PM10/NO₂/O₃/SO₂/CO with sub-indices, weather, observation time, source, hourly outlook chart (with accessible table), and the estimate disclaimer. Loading, error, stale and sample states. |
 | **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (rounded to ~1 km, never saved). |
 | **Smart alerts** | Poor / Very Poor / Severe AQI, high PM2.5, stale data, sample-data notice, and *upcoming changes in outdoor-activity guidance* from the hourly forecast. |
 | **AI Family Assistant** | Household form (family size, children, elders, respiratory sensitivity, activity, commute, ventilation, purifier). Output: situation analysis, what the risk means, what to do now, what to avoid, better alternatives, why it matters. |
 | **Chat box (works with no key)** | Type any question, or tap an example chip, and get an instant answer built on-device from today's AQI and your household (English and common Hinglish keywords), labelled "Rule-based answer, no AI service called". Optionally paste your own Gemini key to get an AI-written answer or the full six-part AI advice; every AI reply is validated and clearly labelled. |
-| **Daily plan** | Morning / afternoon / evening / night actions driven by each period's forecast AQI, each with a reason, checkboxes and a progress bar. Includes the best 2-hour outdoor window. |
+| **Daily plan** | Morning / afternoon / evening / night actions driven by each period's modelled outlook, each with a reason, checkboxes and a progress bar. Includes the best 2-hour outdoor window. |
 | **Indoor air** | "Should I open windows now?" verdict plus 9 hacks, each with what / why / difficulty / cost / benefit / limitations, ranked for your situation. Plants are explicitly décor only. |
 | **Sustainable alternatives** | Personalised by commute. Walking/cycling are *paused* when AQI is Poor or worse. |
 | **Impact tracker** | Log trips; see estimated CO₂e avoided, weekly activity score, habits completed, and exposure-reducing habits, with a 7-day chart and a transparent assumptions panel. |
@@ -60,7 +60,7 @@ src/
     storage.ts         validated localStorage load/save/reset, cities, defaults
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
-  *.test.ts(x)         96 automated tests
+  *.test.ts(x)         114 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -69,9 +69,11 @@ Community, Settings and Sources are code-split with `React.lazy`.
 
 The engine (`lib/engine.ts`) is **deterministic, local and transparent** – no API key needed.
 
-1. **Reading** – `computeReading` computes a CPCB sub-index for each pollutant by linear interpolation between CPCB breakpoints; the AQI is the **worst sub-index** and requires PM2.5 or PM10 (otherwise AQI is "unavailable", never guessed). PM values use the trailing 24 h mean (CPCB averaging); gases use the current hour.
+> **AirWise shows: "CPCB breakpoint-based AQI estimate using modelled air-quality data. Not an official CPCB station reading."** The same sentence appears in the Overview and in Settings.
+
+1. **Reading** – `averagedPollutants` averages each pollutant over its CPCB period ending at the current hour: **24 h** for PM2.5, PM10, NO₂ and SO₂; **8 h** for CO and O₃. `computeReading` then converts each average to a sub-index by linear interpolation between CPCB breakpoints. The AQI is the **worst sub-index**. Data sufficiency: a pollutant needs at least 16 valid hours in its 24 h window (6 of 8 for the 8 h pollutants, the same two-thirds rule); the AQI needs **at least 3 valid sub-indices, including PM2.5 or PM10**. Otherwise the AQI is shown as **unavailable**, never guessed. A single current-hour gas value is never used for the headline AQI.
 2. **Guidance level** – `normal → reduce → avoid → stayIn`, from the AQI category. Households with children, older adults or respiratory sensitivity step one level stricter from *Moderate* upward.
-3. **Context modifiers** – PM2.5 vs the WHO 24 h guideline (15 µg/m³) and the Indian standard (60 µg/m³); purifier present/absent; window ventilation type; commute mode; outdoor activity; light winds ("stagnant air"); the day's hourly forecast (cleanest 2-hour window, per-period outlook).
+3. **Context modifiers** – PM2.5 vs the WHO 24 h guideline (15 µg/m³) and the Indian standard (60 µg/m³); purifier present/absent; window ventilation type; commute mode; outdoor activity; light winds ("stagnant air"); the day's hourly outlook (cleanest 2-hour window, per-period outlook). The hourly chart, cleanest window and period outlook use an **hourly outlook index** computed from each hour's modelled concentrations. It is labelled as such in the UI, is not a CPCB AQI, and exists only to show how the day varies, which a rolling 24 h average would hide.
 4. **Output** – six-part advice, a four-period routine with a reason for each item, and alerts. Example outcomes: good AQI + children → normal activity; poor AQI + children → keep exertion indoors; severe + elderly → stay in, follow official advisories, seek medical advice for symptoms; high PM2.5 without a purifier → cut indoor sources and keep windows closed; car commute → public transport / carpool / combined trips.
 
 Different profiles and AQI levels produce measurably different text (covered by tests).
@@ -87,7 +89,7 @@ Different profiles and AQI levels produce measurably different text (covered by 
 
 ## Data source and API details
 
-* **Air quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) – hourly PM2.5, PM10, NO₂, O₃, SO₂, CO from the Copernicus CAMS atmospheric model (yesterday + today + tomorrow). This is **modelled**, not ground-monitor data; the UI says so.
+* **Air quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) – hourly PM2.5, PM10, NO₂, O₃, SO₂, CO from the Copernicus CAMS atmospheric model (yesterday + today + tomorrow). This is **modelled** data, not ground-monitor data, so the result is an estimate and not an official CPCB reading; the UI says so.
 * **Weather:** Open-Meteo forecast API (temperature, humidity, wind).
 * **City search:** Open-Meteo geocoding API, restricted to India.
 * **Caching:** 30-minute cache per ~1 km grid cell in localStorage; if the network fails, older cached data is shown (and flagged stale after 3 h).
@@ -112,12 +114,12 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 96 tests (Vitest, jsdom)
+npm test           # 114 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
 
-Tests cover AQI classification (boundaries, missing/invalid values), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage), API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
+Tests cover AQI classification (boundaries, missing/invalid values), CPCB 24 h and 8 h averaging, data sufficiency (16 valid hours, 3 pollutants, PM2.5/PM10 required), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage, tampered trip modes), validation of cached air data, API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
 
 ## Security and privacy practices
 
@@ -130,15 +132,17 @@ Tests cover AQI classification (boundaries, missing/invalid values), the recomme
 
 ## Accessibility features
 
-Semantic landmarks and heading order; skip link; keyboard-operable everything with visible focus rings; native form controls with labels; errors linked via `aria-describedby`/`aria-invalid`; AQI never conveyed by colour alone (always a text label + icon); gauge and charts have text alternatives and a data table; `aria-live` status regions; native `<dialog>` for modals; 44 px touch targets; responsive type and layout; `prefers-reduced-motion` honoured. Lighthouse accessibility score **100** (desktop and mobile).
+Semantic landmarks and heading order; skip link; keyboard-operable everything with visible focus rings; native form controls with labels; errors linked via `aria-describedby`/`aria-invalid`; AQI never conveyed by colour alone (always a text label + icon); gauge and charts have text alternatives and a data table; `aria-live` status regions; native `<dialog>` for modals; 44 px touch targets; responsive type and layout; `prefers-reduced-motion` honoured.
 
 ## Performance and efficiency
 
-Three runtime dependencies; ~95 kB gzip main bundle; lazy-loaded Community/Settings/Sources; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup. Lighthouse (local preview build): performance 100 desktop / 92 mobile, best-practices 100, SEO 100.
+Three runtime dependencies; ~99 kB gzip main bundle; lazy-loaded Community/Settings/Sources; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup.
 
 ## Assumptions and limitations
 
-* AQI is **computed** from modelled concentrations using CPCB breakpoints (CPCB specifies 24 h averages for PM and 8 h for O₃/CO; gases here use the current hour). It can differ from official monitor-based AQI.
+* **Modelled data, not station data.** The AQI is an estimate computed from CAMS model output with CPCB breakpoints and averaging rules. It is not an official CPCB station reading and can differ from one, especially near traffic, industry or burning.
+* Forecast hours are also model output; the hourly outlook index is not averaged and is only a guide to the shape of the day.
+* The AQI is shown as unavailable when fewer than 16 valid hours (or fewer than 3 valid pollutants, or neither PM2.5 nor PM10) are available, for example when the service omits a pollutant.
 * Open-Meteo/CAMS has ~10 km resolution; local hotspots are not captured.
 * CO₂e factors are simple assumptions (car 0.15, public transport 0.05, carpool 0.075 kg/km); trips are self-reported. The tracker does **not** claim to change city AQI or measure exposure.
 * Community challenges are demo content; progress is local to the browser.

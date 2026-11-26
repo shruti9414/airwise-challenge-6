@@ -1,5 +1,5 @@
-import type { Activity, Commute, Place, Profile, Saved, Trip, TripMode, Ventilation } from '../types'
-import { MODE_FACTOR } from './impact'
+import type { Activity, Commute, Place, Profile, Saved, Trip, Ventilation } from '../types'
+import { isTripMode } from './impact'
 
 export const STORAGE_KEY = 'airwise:v1'
 
@@ -67,8 +67,8 @@ function sanitizeTrips(v: unknown): Trip[] {
   if (!Array.isArray(v)) return []
   return v.flatMap((t): Trip[] =>
     isObj(t) && typeof t.id === 'string' && typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date)
-      && typeof t.mode === 'string' && t.mode in MODE_FACTOR && typeof t.km === 'number' && t.km > 0 && t.km <= 200
-      ? [{ id: t.id.slice(0, 40), date: t.date, mode: t.mode as TripMode, km: t.km }] : []).slice(-100)
+      && isTripMode(t.mode) && typeof t.km === 'number' && t.km > 0 && t.km <= 200
+      ? [{ id: t.id.slice(0, 40), date: t.date, mode: t.mode, km: t.km }] : []).slice(-100)
 }
 
 function sanitizeDone(v: unknown): Record<string, string[]> {
