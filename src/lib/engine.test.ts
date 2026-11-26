@@ -99,7 +99,8 @@ describe('alerts', () => {
   })
 
   it('stays quiet for clean air', () => {
-    expect(buildAlerts({ ...ctx(10), data: { ...flatData(10), source: 'live' } })).toEqual([])
+    const data = { ...flatData(10), source: 'live' as const }
+    expect(buildAlerts({ ...ctx(10), data, now: data.observedAt })).toEqual([])
   })
 
   it('warns about stale data', () => {
