@@ -49,7 +49,7 @@ export function bestWindow(d: AirData): { start: number; end: number; aqi: numbe
   for (let s = Math.max(6, hour); s <= 19; s++) {
     const a = byHour.get(s),
       b = byHour.get(s + 1)
-    if (a == null || b == null) continue
+    if (typeof a !== 'number' || typeof b !== 'number') continue
     const avg = (a + b) / 2
     if (!best || avg < best.aqi) best = { start: s, aqi: avg }
   }

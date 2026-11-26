@@ -63,29 +63,30 @@ React 19 · TypeScript (strict) · Vite · Lucide icons · Vitest + Testing Libr
 
 ```
 src/
-  App.tsx              page shell, nav, section composition
+  App.tsx              page shell and section composition
   hooks.ts             useSaved (localStorage), useAirData, useDebounced
   types.ts             shared types
   components/          Overview (+Gauge, ReadingSummary, PollutantList, Trend)
                        Assistant (+ProfileForm, AiPanel, GeminiSettings, ChatResults)
-                       LocationPicker (+CitySearch), Routine, IndoorAir,
+                       TopBar (nav + active section), LocationPicker (+CitySearch), Routine, IndoorAir,
                        Impact (alternatives + tracker), Community, Settings, Sources,
                        ui (Section, Modal, BandBadge, AdviceView)
   lib/
     aqi.ts             CPCB breakpoints, sub-indices, categories, outdoor guidance
     airData.ts         Open-Meteo client, cache, staleness, sample data, city search
     engine.ts          shared Context, sensitivity helpers and assess()
-    advice.ts          six-part advice from reading + household
-    routine.ts         four-period routine with a reason per item
+    advice.ts          six-part advice: one small function per rule group
+    routine.ts         four-period routine, one function per period
     alerts.ts          smart alerts (severity, stale data, upcoming change)
     outlook.ts         hourly outlook helpers: periods, period outlook, cleanest window
     content.ts         indoor hacks, alternatives, community content
+    util.ts            roundTo, isRecord, compact (small shared helpers)
     impact.ts          emissions/score maths + trip validation
     storage.ts         validated localStorage load/save/reset, cities, defaults
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
   a11y.test.tsx        axe-core accessibility checks on the rendered app
-  *.test.ts(x)         127 automated tests
+  *.test.ts(x)         130 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -140,7 +141,7 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 127 tests (Vitest, jsdom)
+npm test           # 130 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
@@ -152,6 +153,7 @@ Tests include automated accessibility checks with axe-core (WCAG 2 A/AA rules; c
 * No backend, accounts, tracking or analytics. No secrets in the code; the Gemini key is memory-only.
 * Response headers in `vercel.json`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`.
 * Strict CSP in `index.html` (`script-src 'self'`; `connect-src` limited to Open-Meteo, Nominatim and Gemini), `no-referrer`, no `dangerouslySetInnerHTML`, `eval` or dynamic code; React escapes all output.
+* ESLint forbids non-null assertions and object-literal type assertions in production code (`npm run lint`), and the AQI tables, guidance steps and validators are typed data rather than casts.
 * All stored data is re-validated on load; user inputs (family size, distance, city search) are validated and length-limited. External links use `rel="noopener noreferrer"`.
 * Geolocation only after an in-app consent dialog; coordinates are rounded to ~1 km and never persisted. No exact addresses are collected.
 * **Reset all saved data** in Settings removes every `airwise:*` localStorage entry.

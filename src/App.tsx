@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { useAirData, useSaved } from './hooks'
 import { assess, type Context } from './lib/engine'
 import { buildAlerts } from './lib/alerts'
@@ -8,55 +8,16 @@ import Assistant from './components/Assistant'
 import Routine from './components/Routine'
 import IndoorAir from './components/IndoorAir'
 import { Alternatives, ImpactTracker } from './components/Impact'
-import { Logo, Section } from './components/ui'
+import TopBar from './components/TopBar'
+import { Section } from './components/ui'
 
 const Community = lazy(() => import('./components/Community'))
 const Settings = lazy(() => import('./components/Settings'))
 const Sources = lazy(() => import('./components/Sources'))
 
-const NAV = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'plan', label: 'My Daily Plan' },
-  { id: 'indoor', label: 'Indoor Air' },
-  { id: 'community', label: 'Community' },
-  { id: 'settings', label: 'Settings' },
-]
-
-function useActiveSection() {
-  const [active, setActive] = useState('overview')
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const hit = entries.find((e) => e.isIntersecting)
-        if (hit) setActive(hit.target.id)
-      },
-      { rootMargin: '-30% 0px -60% 0px' },
-    )
-    NAV.forEach((n) => {
-      const el = document.getElementById(n.id)
-      if (el) obs.observe(el)
-    })
-    const late = setTimeout(
-      () =>
-        NAV.forEach((n) => {
-          const el = document.getElementById(n.id)
-          if (el) obs.observe(el)
-        }),
-      1500,
-    )
-    return () => {
-      obs.disconnect()
-      clearTimeout(late)
-    }
-  }, [])
-  return active
-}
-
 export default function App() {
   const { saved, update, reset } = useSaved()
   const { state, reload } = useAirData(saved.place, saved.useSample)
-  const active = useActiveSection()
   const data = state.status === 'ready' ? state.data : null
 
   const ctx: Context | null = useMemo(() => (data ? assess(data, saved.profile) : null), [data, saved.profile])
@@ -76,24 +37,7 @@ export default function App() {
       <a href="#main" className="skip">
         Skip to content
       </a>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <a href="#overview" className="brand" aria-label="AirWise home">
-            <Logo />
-          </a>
-          <nav aria-label="Main">
-            <ul>
-              {NAV.map((n) => (
-                <li key={n.id}>
-                  <a href={`#${n.id}`} aria-current={active === n.id ? 'true' : undefined}>
-                    {n.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      </header>
+      <TopBar />
       <main id="main">
         <h1 className="sr-only">AirWise: urban air quality assistant for families</h1>
         <Section id="overview" eyebrow="Breathe Better, Live Smarter" title="Air quality around you">
