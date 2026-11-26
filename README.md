@@ -52,7 +52,7 @@ src/
     storage.ts         validated localStorage load/save/reset, cities, defaults
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
-  *.test.ts(x)         90 automated tests
+  *.test.ts(x)         96 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
