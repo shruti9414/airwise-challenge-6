@@ -177,6 +177,28 @@ describe('optional Gemini integration', () => {
   })
 })
 
+describe('keyless chat', () => {
+  it('answers a question with no key and makes no network call', async () => {
+    seed()
+    const f = vi.fn()
+    vi.stubGlobal('fetch', f)
+    const { user } = setup()
+    await user.type(screen.getByLabelText('Your question'), 'How can I clean the air in my bedroom?')
+    await user.click(screen.getByRole('button', { name: /Get instant answer/ }))
+    expect(await screen.findByText(/Rule-based answer/)).toBeInTheDocument()
+    expect(screen.getByText(/You asked:/)).toBeInTheDocument()
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  it('still blocks contact details without a key', async () => {
+    seed()
+    const { user } = setup()
+    await user.type(screen.getByLabelText('Your question'), 'call me 9876543210 about air')
+    await user.click(screen.getByRole('button', { name: /Get instant answer/ }))
+    expect(await screen.findByText(/Remove emails/)).toBeInTheDocument()
+  })
+})
+
 describe('Gemini chat box', () => {
   const reply = (body: object) => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }) })
   const unlock = async (user: ReturnType<typeof userEvent.setup>) => {

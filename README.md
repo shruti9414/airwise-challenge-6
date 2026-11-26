@@ -21,7 +21,7 @@ AirWise turns a live AQI reading into a personalised, explainable plan: how poll
 | **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (rounded to ~1 km, never saved). |
 | **Smart alerts** | Poor / Very Poor / Severe AQI, high PM2.5, stale data, sample-data notice, and *upcoming changes in outdoor-activity guidance* from the hourly forecast. |
 | **AI Family Assistant** | Household form (family size, children, elders, respiratory sensitivity, activity, commute, ventilation, purifier). Output: situation analysis, what the risk means, what to do now, what to avoid, better alternatives, why it matters. |
-| **Gemini chat (optional)** | Paste your own API key to ask free-text questions (with example chips) or generate the full six-part AI advice. Every AI reply is validated before display and clearly labelled; the rule-based advice always stays as the fallback. |
+| **Chat box (works with no key)** | Type any question, or tap an example chip, and get an instant answer built on-device from today's AQI and your household (English and common Hinglish keywords), labelled "Rule-based answer, no AI service called". Optionally paste your own Gemini key to get an AI-written answer or the full six-part AI advice; every AI reply is validated and clearly labelled. |
 | **Daily plan** | Morning / afternoon / evening / night actions driven by each period's forecast AQI, each with a reason, checkboxes and a progress bar. Includes the best 2-hour outdoor window. |
 | **Indoor air** | "Should I open windows now?" verdict plus 9 hacks, each with what / why / difficulty / cost / benefit / limitations, ranked for your situation. Plants are explicitly décor only. |
 | **Sustainable alternatives** | Personalised by commute. Walking/cycling are *paused* when AQI is Poor or worse. |
@@ -51,6 +51,7 @@ src/
     impact.ts          emissions/score maths + trip validation
     storage.ts         validated localStorage load/save/reset, cities, defaults
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
+    localChat.ts       keyless question answering from the local engine
   *.test.ts(x)         90 automated tests
 ```
 
@@ -103,12 +104,12 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 90 tests (Vitest, jsdom)
+npm test           # 96 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
 
-Tests cover AQI classification (boundaries, missing/invalid values), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage), API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, Gemini success and failure).
+Tests cover AQI classification (boundaries, missing/invalid values), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage), API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
 
 ## Security and privacy practices
 
