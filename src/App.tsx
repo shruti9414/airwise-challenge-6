@@ -73,6 +73,7 @@ export default function App() {
         </div>
       </header>
       <main id="main">
+        <h1 className="sr-only">AirWise: urban air quality assistant for families</h1>
         <Section id="overview" eyebrow="Breathe Better, Live Smarter" title="Air quality around you">
           <Overview
             state={state} place={saved.place} reading={ctx?.reading ?? null} data={data} alerts={alerts} profile={saved.profile}

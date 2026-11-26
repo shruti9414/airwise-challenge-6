@@ -1,6 +1,7 @@
 import { Wind } from 'lucide-react'
 import { rankHacks } from '../lib/content'
-import { bestWindow, fmtHour, type Context } from '../lib/engine'
+import type { Context } from '../lib/engine'
+import { bestWindow, fmtHour } from '../lib/outlook'
 import { BANDS } from '../lib/aqi'
 import { Empty } from './ui'
 import type { Checklist } from './Routine'

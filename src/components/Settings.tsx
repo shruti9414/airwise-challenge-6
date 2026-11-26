@@ -3,7 +3,7 @@ import { RotateCcw } from 'lucide-react'
 import type { Place, Profile } from '../types'
 import { AQI_NOTE } from '../lib/aqi'
 import LocationPicker from './LocationPicker'
-import { ProfileForm } from './Assistant'
+import { ProfileForm } from './ProfileForm'
 import { Modal } from './ui'
 
 interface Props {

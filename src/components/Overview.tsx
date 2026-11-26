@@ -3,7 +3,8 @@ import type { Alert, AirData, Pollutant, Place, Profile, Reading } from '../type
 import type { AirState } from '../hooks'
 import { AQI_NOTE, BANDS, POLLUTANT_LABEL, POLLUTANT_UNIT, bandFor, guidanceFor, GUIDANCE_LABEL, subIndex, toDisplayUnit } from '../lib/aqi'
 import { isStale, outlookAt } from '../lib/airData'
-import { fmtHour, isSensitive } from '../lib/engine'
+import { isSensitive } from '../lib/engine'
+import { fmtHour } from '../lib/outlook'
 import LocationPicker from './LocationPicker'
 import { BandBadge, Empty } from './ui'
 
@@ -52,7 +53,7 @@ function Trend({ data }: { data: AirData }) {
       <p className="hint">Cleanest: {fmtHour(lo.h)} (index {lo.aqi}) · Highest: {fmtHour(hi.h)} (index {hi.aqi}). Outlined bar = current hour. This is an hourly outlook index from modelled values to show how the day varies; it is not a CPCB AQI.</p>
       <details>
         <summary>View hourly values as a table</summary>
-        <div className="table-wrap">
+        <div className="table-wrap" role="region" aria-label="Hourly outlook values" tabIndex={0}>
           <table>
             <caption className="sr-only">Hourly outlook index today (not a CPCB AQI)</caption>
             <thead><tr><th scope="col">Hour</th><th scope="col">Index</th><th scope="col">Category</th></tr></thead>

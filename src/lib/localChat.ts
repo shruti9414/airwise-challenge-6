@@ -1,5 +1,6 @@
 import { BANDS, GUIDANCE_LABEL, guidanceFor } from './aqi'
-import { bestWindow, fmtHour, isSensitive, type Context } from './engine'
+import { isSensitive, type Context } from './engine'
+import { bestWindow, fmtHour } from './outlook'
 import type { ChatAnswer } from './ai'
 
 type Topic = 'school' | 'indoor' | 'commute' | 'mask' | 'windows' | 'exercise' | 'symptoms' | 'time' | 'outside'

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { CircleAlert, CircleCheck, Info, OctagonAlert, ShieldAlert, TriangleAlert, X } from 'lucide-react'
 import type { Advice, BandId } from '../types'
@@ -44,6 +44,7 @@ export const Empty = ({ children }: { children: ReactNode }) => <p className="em
 
 export function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
   useEffect(() => {
     const d = ref.current
     if (!d) return
@@ -57,9 +58,9 @@ export function Modal({ open, title, onClose, children }: { open: boolean; title
     }
   }, [open])
   return (
-    <dialog ref={ref} className="modal" aria-labelledby="modal-title" onClose={onClose}>
+    <dialog ref={ref} className="modal" aria-labelledby={titleId} onClose={onClose}>
       <div className="modal-head">
-        <h2 id="modal-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-btn" onClick={onClose} aria-label="Close dialog"><X size={20} aria-hidden="true" /></button>
       </div>
       {open && children}

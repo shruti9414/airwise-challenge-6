@@ -21,6 +21,20 @@ AirWise turns a live AQI reading into a personalised, explainable plan: how poll
 * **Tailoring:** location (city search or device location), household (children, older adults, respiratory sensitivity, purifier), activity, commute and home ventilation all change the advice.
 * **Impact of choices:** a weekly tracker converts low-emission trips and habits into CO₂ avoided and an exposure-habit score, with the formulas shown.
 
+## How it aligns with the challenge
+
+| Challenge requirement | Where it is in AirWise |
+|---|---|
+| GenAI-powered assistant | Rule engine plus an optional Gemini layer (own key, memory only, anonymised context, validated replies). The chat box also works with no key. |
+| Low-emission daily routines | **My Daily Plan**: morning, afternoon, evening and night actions, each with a reason. |
+| Indoor air quality hacks | **Indoor Air**: "open windows now?" verdict and nine ranked hacks with honest limits. |
+| Sustainable alternatives | Commute-based alternatives; walking/cycling are paused when air is Poor or worse. |
+| Tailored to location and lifestyle | City search or device location; household, activity, commute, ventilation and purifier change the advice. |
+| Explain the impact of choices | Impact tracker: CO₂e avoided, weekly score and habits, formulas shown. |
+| Severe winter smog and urban pollution | Indian CPCB AQI estimate, PM2.5 vs WHO and Indian standards, smart alerts and cleanest outdoor window. |
+
+**How to see the AI part:** open "Optional: use Gemini AI", paste a Gemini API key (free from Google AI Studio), tick the consent box and press "Ask Gemini". Without a key the app uses the rule-based assistant and says so on every answer.
+
 ## Features
 
 | Area | What it does |
@@ -48,19 +62,21 @@ src/
   App.tsx              page shell, nav, section composition
   hooks.ts             useSaved (localStorage), useAirData, useDebounced
   types.ts             shared types
-  components/          Overview, Assistant (+ProfileForm, AI panel), Routine, IndoorAir,
+  components/          Overview, Assistant (+ProfileForm, AiPanel), Routine, IndoorAir,
                        Impact (alternatives + tracker), Community, Settings, Sources,
                        LocationPicker, ui (Section, Modal, BandBadge, AdviceView)
   lib/
     aqi.ts             CPCB breakpoints, sub-indices, categories, outdoor guidance
     airData.ts         Open-Meteo client, cache, staleness, sample data, city search
-    engine.ts          recommendation engine: advice, routine, alerts, best window
+    engine.ts          recommendation engine: advice, routine, alerts
+    outlook.ts         hourly outlook helpers: periods, period outlook, cleanest window
     content.ts         indoor hacks, alternatives, community content
     impact.ts          emissions/score maths + trip validation
     storage.ts         validated localStorage load/save/reset, cities, defaults
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
-  *.test.ts(x)         114 automated tests
+  a11y.test.tsx        axe-core accessibility checks on the rendered app
+  *.test.ts(x)         117 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -114,16 +130,17 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 114 tests (Vitest, jsdom)
+npm test           # 117 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
 
-Tests cover AQI classification (boundaries, missing/invalid values), CPCB 24 h and 8 h averaging, data sufficiency (16 valid hours, 3 pollutants, PM2.5/PM10 required), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage, tampered trip modes), validation of cached air data, API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
+Tests include automated accessibility checks with axe-core (WCAG 2 A/AA rules; colour contrast needs a real browser, so it is checked separately). Tests cover AQI classification (boundaries, missing/invalid values), CPCB 24 h and 8 h averaging, data sufficiency (16 valid hours, 3 pollutants, PM2.5/PM10 required), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage, tampered trip modes), validation of cached air data, API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
 
 ## Security and privacy practices
 
 * No backend, accounts, tracking or analytics. No secrets in the code; the Gemini key is memory-only.
+* Response headers in `vercel.json`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`.
 * Strict CSP in `index.html` (`script-src 'self'`; `connect-src` limited to Open-Meteo and Gemini), `no-referrer`, no `dangerouslySetInnerHTML`, `eval` or dynamic code; React escapes all output.
 * All stored data is re-validated on load; user inputs (family size, distance, city search) are validated and length-limited. External links use `rel="noopener noreferrer"`.
 * Geolocation only after an in-app consent dialog; coordinates are rounded to ~1 km and never persisted. No exact addresses are collected.
@@ -132,11 +149,13 @@ Tests cover AQI classification (boundaries, missing/invalid values), CPCB 24 h a
 
 ## Accessibility features
 
-Semantic landmarks and heading order; skip link; keyboard-operable everything with visible focus rings; native form controls with labels; errors linked via `aria-describedby`/`aria-invalid`; AQI never conveyed by colour alone (always a text label + icon); gauge and charts have text alternatives and a data table; `aria-live` status regions; native `<dialog>` for modals; 44 px touch targets; responsive type and layout; `prefers-reduced-motion` honoured.
+Semantic landmarks and heading order; skip link; keyboard-operable everything with visible focus rings; native form controls with labels; errors linked via `aria-describedby`/`aria-invalid`; AQI never conveyed by colour alone (always a text label + icon); gauge and charts have text alternatives and a data table; `aria-live` status regions; native `<dialog>` for modals; 44 px touch targets; responsive type and layout; `prefers-reduced-motion` honoured; one hidden page-level `h1`; scrollable table region is keyboard-focusable.
+
+**Measured (local production preview, 26 Nov 2026; results vary by machine):** Lighthouse accessibility 100, best-practices 100, SEO 100 on desktop and mobile. axe-core in Chrome reported 0 violations on desktop and mobile widths. axe could not evaluate contrast over the gradient hero, so text/background pairs of the palette were computed separately: body and muted text are at least 5.5:1 and badges at least 6.8:1.
 
 ## Performance and efficiency
 
-Three runtime dependencies; ~99 kB gzip main bundle; lazy-loaded Community/Settings/Sources; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup.
+Three runtime dependencies; ~99 kB gzip main bundle; hashed assets served with immutable caching (`vercel.json`); preconnect to the air-quality API; lazy-loaded Community/Settings/Sources; memoised advice; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup. Lighthouse performance (same measurement): 99 desktop, 94 mobile.
 
 ## Assumptions and limitations
 

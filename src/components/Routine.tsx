@@ -1,6 +1,7 @@
 import { Moon, Sun, Sunrise, Sunset } from 'lucide-react'
 import type { Period } from '../types'
-import { PERIODS, buildRoutine, currentHour, periodOf, periodOutlook, type Context } from '../lib/engine'
+import { buildRoutine, type Context } from '../lib/engine'
+import { PERIODS, currentHour, periodOf, periodOutlook } from '../lib/outlook'
 import { BandBadge, Empty } from './ui'
 
 const ICONS = { morning: Sunrise, afternoon: Sun, evening: Sunset, night: Moon }

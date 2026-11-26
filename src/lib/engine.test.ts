@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { flatData, profile } from '../testData'
-import { assess, bestWindow, buildAdvice, buildAlerts, buildRoutine, periodOutlook } from './engine'
+import { assess, buildAdvice, buildAlerts, buildRoutine } from './engine'
+import { bestWindow, periodOutlook } from './outlook'
 import { alternativesFor, rankHacks } from './content'
 import { sampleData } from './airData'
 
