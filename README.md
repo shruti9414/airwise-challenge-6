@@ -7,6 +7,8 @@
 
 > **To try the Gemini AI features:** scroll to **Ask a question** on the Overview page, open **Optional: use Gemini AI**, paste your own Gemini API key (free from [Google AI Studio](https://aistudio.google.com/apikey)), tick the consent box and press **Ask Gemini**. The key is never stored or committed: it stays in memory only and is cleared when you leave the page. Without a key, **Get instant answer** gives a rule-based answer, clearly labelled as such.
 
+**Demo video:** [demo/airwise-demo.mp4](demo/airwise-demo.mp4) (84 seconds, captions, no audio), recorded on the live site.
+
 ## Problem statement
 
 Every winter, cities such as Delhi, Lucknow and Ahmedabad see severe smog. An AQI number alone does not tell a family *what to do*: whether children can play outside, when to open windows, how to commute, or what small habits actually help.
