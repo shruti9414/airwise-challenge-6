@@ -86,7 +86,7 @@ src/
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
   a11y.test.tsx        axe-core accessibility checks on the rendered app
-  *.test.ts(x)         130 automated tests
+  *.test.ts(x)         158 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -141,10 +141,15 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 130 tests (Vitest, jsdom)
+npm test           # 158 tests (Vitest, jsdom)
+npm run test:coverage  # same tests with a V8 coverage report and minimum thresholds
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
+
+**Coverage** (measured with `npm run test:coverage`): 97.6% statements, 92.4% branches, 96.6% functions, 99.0% lines. Floors are enforced in `vite.config.ts` (95 / 88 / 92 / 96), so the run fails if coverage drops. Async waits are set to 8 s so lazy-loaded sections do not make tests flaky on slow machines.
+
+Beyond unit and UI tests, a **matrix test** runs the advice, routine, alert and chat engines across every combination of household flags, commute, ventilation, activity, purifier and seven AQI levels (thousands of cases) and checks that every output is complete, unique, readable and safe. Gemini retry, timeout, thinking-part and key-header behaviour is tested with fake timers.
 
 Tests include automated accessibility checks with axe-core (WCAG 2 A/AA rules; colour contrast needs a real browser, so it is checked separately). Tests cover AQI classification (boundaries, missing/invalid values), CPCB 24 h and 8 h averaging, data sufficiency (16 valid hours, 3 pollutants, PM2.5/PM10 required), the recommendation engine for the five documented scenarios and different profiles, indoor-hack ranking, sustainable alternatives, impact maths, trip/family-size validation, localStorage handling (corrupt, tampered, throwing storage, tampered trip modes), validation of cached air data, API parsing, caching, API failure fallback, stale data, city search, AI anonymisation/validation/timeout, and UI flows (navigation, skip link & keyboard order, loading/error/empty states, forms, routine progress, trip log, challenges, reset, sample↔live switch, keyless chat, Gemini success and failure).
 
