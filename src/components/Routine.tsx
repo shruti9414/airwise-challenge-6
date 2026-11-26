@@ -1,6 +1,7 @@
 import { Moon, Sun, Sunrise, Sunset } from 'lucide-react'
 import type { Period } from '../types'
-import { buildRoutine, type Context } from '../lib/engine'
+import type { Context } from '../lib/engine'
+import { buildRoutine } from '../lib/routine'
 import { PERIODS, currentHour, periodOf, periodOutlook } from '../lib/outlook'
 import { BandBadge, Empty } from './ui'
 

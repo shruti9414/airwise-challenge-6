@@ -66,13 +66,18 @@ src/
   App.tsx              page shell, nav, section composition
   hooks.ts             useSaved (localStorage), useAirData, useDebounced
   types.ts             shared types
-  components/          Overview, Assistant (+ProfileForm, AiPanel), Routine, IndoorAir,
+  components/          Overview (+Gauge, ReadingSummary, PollutantList, Trend)
+                       Assistant (+ProfileForm, AiPanel, GeminiSettings, ChatResults)
+                       LocationPicker (+CitySearch), Routine, IndoorAir,
                        Impact (alternatives + tracker), Community, Settings, Sources,
-                       LocationPicker, ui (Section, Modal, BandBadge, AdviceView)
+                       ui (Section, Modal, BandBadge, AdviceView)
   lib/
     aqi.ts             CPCB breakpoints, sub-indices, categories, outdoor guidance
     airData.ts         Open-Meteo client, cache, staleness, sample data, city search
-    engine.ts          recommendation engine: advice, routine, alerts
+    engine.ts          shared Context, sensitivity helpers and assess()
+    advice.ts          six-part advice from reading + household
+    routine.ts         four-period routine with a reason per item
+    alerts.ts          smart alerts (severity, stale data, upcoming change)
     outlook.ts         hourly outlook helpers: periods, period outlook, cleanest window
     content.ts         indoor hacks, alternatives, community content
     impact.ts          emissions/score maths + trip validation
@@ -87,7 +92,7 @@ Community, Settings and Sources are code-split with `React.lazy`.
 
 ## Recommendation engine logic
 
-The engine (`lib/engine.ts`) is **deterministic, local and transparent** – no API key needed.
+The engine (`lib/engine.ts`, `advice.ts`, `routine.ts`, `alerts.ts`) is **deterministic, local and transparent** – no API key needed.
 
 > **AirWise shows: "CPCB breakpoint-based AQI estimate using modelled air-quality data. Not an official CPCB station reading."** The same sentence appears in the Overview and in Settings.
 
@@ -128,6 +133,7 @@ npm install
 npm run dev        # development server
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build
+npm run format     # prettier (120 columns); `npm run format:check` verifies
 ```
 Requires Node 20+.
 

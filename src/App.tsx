@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useAirData, useSaved } from './hooks'
-import { assess, buildAlerts, type Context } from './lib/engine'
+import { assess, type Context } from './lib/engine'
+import { buildAlerts } from './lib/alerts'
 import { dayKey } from './lib/impact'
 import Overview from './components/Overview'
 import Assistant from './components/Assistant'

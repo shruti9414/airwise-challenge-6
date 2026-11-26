@@ -171,13 +171,11 @@ describe('optional Gemini integration', () => {
       alternatives: ['Yoga'],
       why: 'Fine particles reach the lungs.',
     }
-    const f = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }),
-      })
+    const f = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }),
+    })
     vi.stubGlobal('fetch', f)
     const { user } = setup()
     expect(screen.getByText(/Rule-based advice/)).toBeInTheDocument()
@@ -224,13 +222,11 @@ describe('use my location', () => {
 
   it('names the place from the reverse-geocoding lookup and sends only rounded coordinates', async () => {
     seed()
-    const f = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ address: { state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' } }),
-      })
+    const f = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ address: { state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' } }),
+    })
     vi.stubGlobal('fetch', f)
     stubGeo((ok) => ok({ coords: { latitude: 21.17021, longitude: 72.83114 } } as GeolocationPosition))
     const { user } = setup()
