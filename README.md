@@ -42,7 +42,7 @@ AirWise turns a live AQI reading into a personalised, explainable plan: how poll
 | Area | What it does |
 |---|---|
 | **Overview** | Live Indian AQI gauge (CPCB scale), category, dominant pollutant, PM2.5/PM10/NO₂/O₃/SO₂/CO with sub-indices, weather, observation time, source, hourly outlook chart (with accessible table), and the estimate disclaimer. Loading, error, stale and sample states. |
-| **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (rounded to ~1 km, never saved). |
+| **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (fresh high-accuracy position, rounded to ~1 km, never saved, labelled "Near <nearest preset city>" with no extra network call; clear messages for denied, unavailable and timed-out location). |
 | **Smart alerts** | Poor / Very Poor / Severe AQI, high PM2.5, stale data, sample-data notice, and *upcoming changes in outdoor-activity guidance* from the hourly forecast. |
 | **AI Family Assistant** | Household form (family size, children, elders, respiratory sensitivity, activity, commute, ventilation, purifier). Output: situation analysis, what the risk means, what to do now, what to avoid, better alternatives, why it matters. |
 | **Chat box (works with no key)** | Type any question, or tap an example chip, and get an instant answer built on-device from today's AQI and your household (English and common Hinglish keywords), labelled "Rule-based answer, no AI service called". Optionally paste your own Gemini key to get an AI-written answer or the full six-part AI advice; every AI reply is validated and clearly labelled. |
@@ -78,7 +78,7 @@ src/
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
   a11y.test.tsx        axe-core accessibility checks on the rendered app
-  *.test.ts(x)         117 automated tests
+  *.test.ts(x)         123 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -132,7 +132,7 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 117 tests (Vitest, jsdom)
+npm test           # 123 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
@@ -157,10 +157,12 @@ Semantic landmarks and heading order; skip link; keyboard-operable everything wi
 
 ## Performance and efficiency
 
-Three runtime dependencies; ~99 kB gzip main bundle; hashed assets served with immutable caching (`vercel.json`); preconnect to the air-quality API; lazy-loaded Community/Settings/Sources; memoised advice; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup. Lighthouse performance (same measurement): 99 desktop, 94 mobile.
+Three runtime dependencies; ~99 kB gzip main bundle; reserved hero space so the page does not jump when data arrives; hashed assets served with immutable caching (`vercel.json`); preconnect to the air-quality API; lazy-loaded Community/Settings/Sources; memoised advice; no images or web fonts; debounced city search (400 ms); abortable fetches; 30-minute data cache; memoised derived data; listener cleanup. Lighthouse performance (same measurement): 99 desktop, 96 mobile (layout shift 0 on mobile).
 
 ## Assumptions and limitations
 
+* **Why not official station data?** Public station feeds (CPCB, OpenAQ, WAQI and similar) generally need an API key, a registration or a server, which a keyless, backend-free app cannot hold safely. Open-Meteo needs no key, so AirWise uses it and says plainly that the result is an estimate.
+* **Device location can be approximate.** Laptops and desktops usually estimate location from Wi-Fi or IP and can be several km off; phones with GPS are better. The air-quality model itself covers roughly 10 km, so the city picker is the reliable choice.
 * **Modelled data, not station data.** The AQI is an estimate computed from CAMS model output with CPCB breakpoints and averaging rules. It is not an official CPCB station reading and can differ from one, especially near traffic, industry or burning.
 * Forecast hours are also model output; the hourly outlook index is not averaged and is only a guide to the shape of the day.
 * The AQI is shown as unavailable when fewer than 16 valid hours (or fewer than 3 valid pollutants, or neither PM2.5 nor PM10) are available, for example when the service omits a pollutant.

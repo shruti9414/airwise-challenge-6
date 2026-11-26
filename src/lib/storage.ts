@@ -16,6 +16,27 @@ export const CITIES: Place[] = [
   { name: 'Jaipur', lat: 26.91, lon: 75.79, kind: 'city' },
 ]
 
+const KM_PER_DEGREE = 111.2
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Nearest preset city within `maxKm`, used only to give a device location a readable name (no network call). */
+export function nearestCity(lat: number, lon: number, maxKm = 60): Place | null {
+  const lonScale = Math.cos((lat * Math.PI) / 180)
+  let best: Place | null = null
+  let bestKm = maxKm
+  for (const c of CITIES) {
+    const km = Math.hypot((c.lat - lat) * KM_PER_DEGREE, (c.lon - lon) * KM_PER_DEGREE * lonScale)
+    if (km <= bestKm) { best = c; bestKm = km }
+  }
+  return best
+}
+
+/** A device-detected place: coordinates rounded to ~1 km, labelled by the nearest preset city when there is one. */
+export function geoPlace(lat: number, lon: number): Place {
+  const near = nearestCity(lat, lon)
+  return { name: near ? `Near ${near.name} (approx.)` : 'Your location (approx.)', lat: round2(lat), lon: round2(lon), kind: 'geo' }
+}
+
 export const DEFAULT_PROFILE: Profile = {
   familySize: 4, children: false, elderly: false, respiratory: false,
   activity: 'walking', commute: 'car', ventilation: 'openable', purifier: false,

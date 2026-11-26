@@ -177,6 +177,37 @@ describe('optional Gemini integration', () => {
   })
 })
 
+describe('use my location', () => {
+  const stubGeo = (impl: (ok: PositionCallback, fail: PositionErrorCallback, opts?: PositionOptions) => void) => {
+    const getCurrentPosition = vi.fn(impl)
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
+    return getCurrentPosition
+  }
+  const locate = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getAllByRole('button', { name: /Use my location/ })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+  }
+
+  it('asks for a fresh high-accuracy position and names it after the nearest preset city', async () => {
+    seed()
+    const get = stubGeo((ok) => ok({ coords: { latitude: 28.7041, longitude: 77.1025 } } as GeolocationPosition))
+    const { user } = setup()
+    await locate(user)
+    expect((await screen.findAllByText('Near Delhi (approx.)')).length).toBeGreaterThan(0)
+    expect(get.mock.calls[0]![2]).toMatchObject({ enableHighAccuracy: true, maximumAge: 0 })
+  })
+
+  it.each([
+    [1, /permission was denied/], [2, /could not work out its location/], [3, /took too long/],
+  ])('explains geolocation error code %i specifically', async (code, message) => {
+    seed()
+    stubGeo((_ok, fail) => fail({ code, message: '' } as GeolocationPositionError))
+    const { user } = setup()
+    await locate(user)
+    expect(await screen.findByText(message)).toBeInTheDocument()
+  })
+})
+
 describe('keyless chat', () => {
   it('answers a question with no key and makes no network call', async () => {
     seed()

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SAVED, STORAGE_KEY, clearAllSaved, loadSaved, parseFamilySize, persist, sanitizeProfile, sanitizeSaved } from './storage'
+import { DEFAULT_SAVED, STORAGE_KEY, clearAllSaved, geoPlace, loadSaved, nearestCity, parseFamilySize, persist, sanitizeProfile, sanitizeSaved } from './storage'
 
 beforeEach(() => localStorage.clear())
 
@@ -58,6 +58,19 @@ describe('local storage handling', () => {
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full') })
     expect(() => persist(DEFAULT_SAVED)).not.toThrow()
     spy.mockRestore()
+  })
+})
+
+describe('device location naming', () => {
+  it('labels a position by the nearest preset city within 60 km', () => {
+    expect(nearestCity(28.7041, 77.1025)?.name).toBe('Delhi')
+    expect(nearestCity(19.2, 72.9)?.name).toBe('Mumbai')
+    expect(nearestCity(21.15, 79.09)).toBeNull()
+  })
+
+  it('rounds coordinates to about 1 km and never claims a city that is far away', () => {
+    expect(geoPlace(28.70412, 77.10259)).toEqual({ name: 'Near Delhi (approx.)', lat: 28.7, lon: 77.1, kind: 'geo' })
+    expect(geoPlace(21.1458, 79.0882).name).toBe('Your location (approx.)')
   })
 })
 

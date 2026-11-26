@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react'
 import { LocateFixed, Search } from 'lucide-react'
 import type { Place } from '../types'
 import { type GeoResult, searchPlaces } from '../lib/airData'
-import { CITIES } from '../lib/storage'
+import { CITIES, geoPlace } from '../lib/storage'
 import { useDebounced } from '../hooks'
 import { Modal } from './ui'
 
 interface Props { idPrefix: string; place: Place; onPlace: (p: Place) => void }
+
+/** Keyed by GeolocationPositionError.code. */
+const GEO_ERRORS: Record<number, string> = {
+  1: 'Location permission was denied. Allow location for this site in your browser settings, or choose a city instead.',
+  2: 'Your device could not work out its location. Choose a city instead.',
+  3: 'Finding your location took too long. Try again, or choose a city instead.',
+}
 
 export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
   const [query, setQuery] = useState('')
@@ -31,9 +38,9 @@ export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
     setGeoError('')
     if (!navigator.geolocation) return setGeoError('Your browser does not support location access. Choose a city instead.')
     navigator.geolocation.getCurrentPosition(
-      (pos) => onPlace({ name: 'Your location (approx.)', lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100, kind: 'geo' }),
-      () => setGeoError('Location permission was not granted or is unavailable. Choose a city instead.'),
-      { timeout: 10_000, maximumAge: 600_000 },
+      (pos) => onPlace(geoPlace(pos.coords.latitude, pos.coords.longitude)),
+      (err) => setGeoError(GEO_ERRORS[err.code] ?? GEO_ERRORS[2]!),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     )
   }
 
@@ -75,6 +82,7 @@ export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
       <div>
         <button type="button" className="btn secondary" onClick={() => setConsent(true)}><LocateFixed size={18} aria-hidden="true" />Use my location</button>
         {geoError && <p className="error" role="alert">{geoError}</p>}
+        <p className="hint">Laptops and desktops usually estimate location from Wi-Fi or IP and can be several km off; phones with GPS are more accurate. Air-quality data covers roughly 10 km, so if the area looks wrong, pick your city instead.</p>
       </div>
       <Modal open={consent} title="Use your location?" onClose={() => setConsent(false)}>
         <p>AirWise will ask your browser for your location once, round it to about 1 km, and use it only to fetch air quality for that area. It is not stored or sent anywhere except the Open-Meteo data service as rounded coordinates.</p>
