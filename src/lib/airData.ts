@@ -137,6 +137,27 @@ export const currentReading = (d: AirData) => computeReading(averagedPollutants(
  */
 export const outlookAt = (d: AirData, i: number) => computeReading(d.hourly[i] as Pollutants)
 
+export const REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse'
+
+/**
+ * Readable place name for rounded coordinates, from OpenStreetMap Nominatim (no key needed). Returns null when the
+ * service is unavailable or has no usable name. `referrerPolicy: 'origin'` identifies the app without sending a path.
+ */
+export async function reverseGeocode(lat: number, lon: number, signal?: AbortSignal): Promise<string | null> {
+  try {
+    const res = await fetch(`${REVERSE_URL}?format=jsonv2&zoom=10&addressdetails=1&accept-language=en&lat=${lat}&lon=${lon}`, { signal, referrerPolicy: 'origin' })
+    if (!res.ok) return null
+    const address = ((await res.json()) as { address?: Record<string, unknown> } | null)?.address ?? {}
+    const text = (k: string) => (typeof address[k] === 'string' ? (address[k] as string).trim() : '')
+    const area = ['city', 'town', 'village', 'municipality', 'state_district', 'county'].map(text).find(Boolean)
+    if (!area) return null
+    const state = text('state')
+    return (state && state !== area ? `${area}, ${state}` : area).slice(0, 50)
+  } catch {
+    return null
+  }
+}
+
 export interface GeoResult { name: string; lat: number; lon: number; admin: string }
 
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<GeoResult[]> {

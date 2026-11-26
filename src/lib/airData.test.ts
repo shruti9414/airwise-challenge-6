@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CACHE_TTL_MS, currentReading, isStale, isValidAirData, loadLive, parseAirQuality, readCache, sampleData, searchPlaces } from './airData'
+import { CACHE_TTL_MS, currentReading, isStale, isValidAirData, loadLive, parseAirQuality, readCache, reverseGeocode, sampleData, searchPlaces } from './airData'
 import type { Place } from '../types'
 
 const place: Place = { name: 'Delhi', lat: 28.61, lon: 77.21, kind: 'city' }
@@ -152,5 +152,38 @@ describe('city search', () => {
     expect(await searchPlaces('s')).toEqual([])
     expect(f).not.toHaveBeenCalled()
     expect(await searchPlaces(' Surat ')).toEqual([{ name: 'Surat', lat: 21.17, lon: 72.83, admin: 'Gujarat' }])
+  })
+})
+
+describe('reverse geocoding (place name for a detected location)', () => {
+  const reply = (address: unknown) => vi.fn().mockResolvedValue(ok({ address }))
+
+  it('prefers city, then town/village, then district, and appends the state', async () => {
+    vi.stubGlobal('fetch', reply({ city: 'Nagpur', state: 'Maharashtra', county: 'Nagpur Urban Taluka' }))
+    expect(await reverseGeocode(21.15, 79.09)).toBe('Nagpur, Maharashtra')
+    vi.stubGlobal('fetch', reply({ state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' }))
+    expect(await reverseGeocode(21.17, 72.83)).toBe('Surat, Gujarat')
+    vi.stubGlobal('fetch', reply({ village: 'Khoj', state: 'Khoj' }))
+    expect(await reverseGeocode(1, 1)).toBe('Khoj')
+  })
+
+  it('sends rounded coordinates and identifies the app by origin only', async () => {
+    const f = reply({ city: 'Pune' })
+    vi.stubGlobal('fetch', f)
+    await reverseGeocode(18.52, 73.86)
+    const [url, init] = f.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('lat=18.52&lon=73.86')
+    expect(init.referrerPolicy).toBe('origin')
+  })
+
+  it('returns null on a failed, empty, malformed or throwing response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 } as Response))
+    expect(await reverseGeocode(1, 1)).toBeNull()
+    vi.stubGlobal('fetch', reply({}))
+    expect(await reverseGeocode(1, 1)).toBeNull()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok(null)))
+    expect(await reverseGeocode(1, 1)).toBeNull()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    expect(await reverseGeocode(1, 1)).toBeNull()
   })
 })

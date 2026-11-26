@@ -71,6 +71,7 @@ describe('device location naming', () => {
   it('rounds coordinates to about 1 km and never claims a city that is far away', () => {
     expect(geoPlace(28.70412, 77.10259)).toEqual({ name: 'Near Delhi (approx.)', lat: 28.7, lon: 77.1, kind: 'geo' })
     expect(geoPlace(21.1458, 79.0882).name).toBe('Your location (approx.)')
+    expect(geoPlace(21.1458, 79.0882, 'Nagpur, Maharashtra').name).toBe('Nagpur, Maharashtra (approx.)')
   })
 })
 

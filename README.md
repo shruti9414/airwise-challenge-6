@@ -3,7 +3,7 @@
 **Challenge:** PromptWars Challenge 6 – Urban Air Quality Assistant
 **Vertical:** Environmental health / civic tech for families and communities in Indian cities
 
-> **No database. No backend. No login.** AirWise is a static, frontend-only React app. Everything runs in the browser; the only network calls are to public APIs (Open-Meteo, and Google Gemini if you choose to paste your own key).
+> **No database. No backend. No login.** AirWise is a static, frontend-only React app. Everything runs in the browser; the only network calls are to public APIs (Open-Meteo; OpenStreetMap Nominatim only if you use "Use my location"; and Google Gemini if you choose to paste your own key).
 
 > **To try the Gemini AI features:** scroll to **Ask a question** on the Overview page, open **Optional: use Gemini AI**, paste your own Gemini API key (free from [Google AI Studio](https://aistudio.google.com/apikey)), tick the consent box and press **Ask Gemini**. The key is never stored or committed: it stays in memory only and is cleared when you leave the page. Without a key, **Get instant answer** gives a rule-based answer, clearly labelled as such.
 
@@ -42,7 +42,7 @@ AirWise turns a live AQI reading into a personalised, explainable plan: how poll
 | Area | What it does |
 |---|---|
 | **Overview** | Live Indian AQI gauge (CPCB scale), category, dominant pollutant, PM2.5/PM10/NO₂/O₃/SO₂/CO with sub-indices, weather, observation time, source, hourly outlook chart (with accessible table), and the estimate disclaimer. Loading, error, stale and sample states. |
-| **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (fresh high-accuracy position, rounded to ~1 km, never saved, labelled "Near <nearest preset city>" with no extra network call; clear messages for denied, unavailable and timed-out location). |
+| **Location** | 10 preset Indian cities (Ahmedabad, Delhi, Mumbai, Bengaluru, Pune, …), debounced search for any Indian city, and "use my location" behind an explicit consent dialog (fresh high-accuracy position, rounded to ~1 km, never saved, named by a reverse-geocode of the rounded coordinates via OpenStreetMap Nominatim, e.g. "Surat, Gujarat (approx.)", falling back to "Near <nearest preset city>" if that lookup fails; clear messages for denied, unavailable and timed-out location). |
 | **Smart alerts** | Poor / Very Poor / Severe AQI, high PM2.5, stale data, sample-data notice, and *upcoming changes in outdoor-activity guidance* from the hourly forecast. |
 | **AI Family Assistant** | Household form (family size, children, elders, respiratory sensitivity, activity, commute, ventilation, purifier). Output: situation analysis, what the risk means, what to do now, what to avoid, better alternatives, why it matters. |
 | **Chat box (works with no key)** | Type any question, or tap an example chip, and get an instant answer built on-device from today's AQI and your household (English and common Hinglish keywords), labelled "Rule-based answer, no AI service called". Optionally paste your own Gemini key to get an AI-written answer or the full six-part AI advice; every AI reply is validated and clearly labelled. |
@@ -78,7 +78,7 @@ src/
     ai.ts              provider adapter, Gemini provider, anonymisation, validation
     localChat.ts       keyless question answering from the local engine
   a11y.test.tsx        axe-core accessibility checks on the rendered app
-  *.test.ts(x)         123 automated tests
+  *.test.ts(x)         127 automated tests
 ```
 
 Community, Settings and Sources are code-split with `React.lazy`.
@@ -132,7 +132,7 @@ Requires Node 20+.
 ## Testing
 
 ```bash
-npm test           # 123 tests (Vitest, jsdom)
+npm test           # 127 tests (Vitest, jsdom)
 npm run typecheck  # tsc --noEmit (strict)
 npm run lint       # ESLint
 ```
@@ -143,7 +143,7 @@ Tests include automated accessibility checks with axe-core (WCAG 2 A/AA rules; c
 
 * No backend, accounts, tracking or analytics. No secrets in the code; the Gemini key is memory-only.
 * Response headers in `vercel.json`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`.
-* Strict CSP in `index.html` (`script-src 'self'`; `connect-src` limited to Open-Meteo and Gemini), `no-referrer`, no `dangerouslySetInnerHTML`, `eval` or dynamic code; React escapes all output.
+* Strict CSP in `index.html` (`script-src 'self'`; `connect-src` limited to Open-Meteo, Nominatim and Gemini), `no-referrer`, no `dangerouslySetInnerHTML`, `eval` or dynamic code; React escapes all output.
 * All stored data is re-validated on load; user inputs (family size, distance, city search) are validated and length-limited. External links use `rel="noopener noreferrer"`.
 * Geolocation only after an in-app consent dialog; coordinates are rounded to ~1 km and never persisted. No exact addresses are collected.
 * **Reset all saved data** in Settings removes every `airwise:*` localStorage entry.
@@ -162,6 +162,7 @@ Three runtime dependencies; ~99 kB gzip main bundle; reserved hero space so the 
 ## Assumptions and limitations
 
 * **Why not official station data?** Public station feeds (CPCB, OpenAQ, WAQI and similar) generally need an API key, a registration or a server, which a keyless, backend-free app cannot hold safely. Open-Meteo needs no key, so AirWise uses it and says plainly that the result is an estimate.
+* **Place name lookup.** Using "Use my location" sends the rounded (~1 km) coordinates to OpenStreetMap Nominatim to get a readable name; the consent dialog says so. Nothing is stored, and the app works without it.
 * **Device location can be approximate.** Laptops and desktops usually estimate location from Wi-Fi or IP and can be several km off; phones with GPS are better. The air-quality model itself covers roughly 10 km, so the city picker is the reliable choice.
 * **Modelled data, not station data.** The AQI is an estimate computed from CAMS model output with CPCB breakpoints and averaging rules. It is not an official CPCB station reading and can differ from one, especially near traffic, industry or burning.
 * Forecast hours are also model output; the hourly outlook index is not averaged and is only a guide to the shape of the day.

@@ -33,7 +33,7 @@ export default function Settings({ place, profile, useSample, onPlace, onProfile
         <h3>Privacy and calculation assumptions</h3>
         <ul className="bullets">
           <li>No account, backend or database. Preferences, daily checklist, trip log and cached air data are stored only in this browser’s localStorage.</li>
-          <li>No exact address is collected. Detected locations are rounded to about 1 km, used for the data request only and never saved.</li>
+          <li>No exact address is collected. Detected locations are rounded to about 1 km, sent only to Open-Meteo (air quality) and OpenStreetMap Nominatim (place name), and never saved.</li>
           <li>The optional AI key is kept in memory only. See the AI panel for exactly what is sent.</li>
           <li>{AQI_NOTE} It uses the worst sub-index, 24-hour means (PM2.5, PM10, NO₂, SO₂) and 8-hour means (CO, O₃), and needs PM2.5 or PM10 plus at least three pollutants with enough valid hours.</li>
         </ul>

@@ -190,11 +190,25 @@ describe('use my location', () => {
 
   it('asks for a fresh high-accuracy position and names it after the nearest preset city', async () => {
     seed()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     const get = stubGeo((ok) => ok({ coords: { latitude: 28.7041, longitude: 77.1025 } } as GeolocationPosition))
     const { user } = setup()
     await locate(user)
     expect((await screen.findAllByText('Near Delhi (approx.)')).length).toBeGreaterThan(0)
     expect(get.mock.calls[0]![2]).toMatchObject({ enableHighAccuracy: true, maximumAge: 0 })
+  })
+
+  it('names the place from the reverse-geocoding lookup and sends only rounded coordinates', async () => {
+    seed()
+    const f = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ address: { state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' } }) })
+    vi.stubGlobal('fetch', f)
+    stubGeo((ok) => ok({ coords: { latitude: 21.17021, longitude: 72.83114 } } as GeolocationPosition))
+    const { user } = setup()
+    await locate(user)
+    expect((await screen.findAllByText('Surat, Gujarat (approx.)')).length).toBeGreaterThan(0)
+    const url = String((f.mock.calls.find(([u]) => String(u).includes('nominatim')) as [string])[0])
+    expect(url).toContain('lat=21.17&lon=72.83')
+    expect(url).not.toContain('21.17021')
   })
 
   it.each([

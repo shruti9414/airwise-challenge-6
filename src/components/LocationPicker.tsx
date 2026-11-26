@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LocateFixed, Search } from 'lucide-react'
 import type { Place } from '../types'
-import { type GeoResult, searchPlaces } from '../lib/airData'
+import { type GeoResult, reverseGeocode, searchPlaces } from '../lib/airData'
 import { CITIES, geoPlace } from '../lib/storage'
 import { useDebounced } from '../hooks'
 import { Modal } from './ui'
@@ -21,6 +21,7 @@ export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
   const [results, setResults] = useState<{ q: string; items: GeoResult[] | 'error' } | null>(null)
   const [consent, setConsent] = useState(false)
   const [geoError, setGeoError] = useState('')
+  const [locating, setLocating] = useState(false)
 
   useEffect(() => {
     if (debounced.length < 2) return
@@ -37,9 +38,18 @@ export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
     setConsent(false)
     setGeoError('')
     if (!navigator.geolocation) return setGeoError('Your browser does not support location access. Choose a city instead.')
+    setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => onPlace(geoPlace(pos.coords.latitude, pos.coords.longitude)),
-      (err) => setGeoError(GEO_ERRORS[err.code] ?? GEO_ERRORS[2]!),
+      async (pos) => {
+        const lat = Math.round(pos.coords.latitude * 100) / 100, lon = Math.round(pos.coords.longitude * 100) / 100
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), 5000)
+        const area = await reverseGeocode(lat, lon, ctrl.signal)
+        clearTimeout(timer)
+        setLocating(false)
+        onPlace(geoPlace(lat, lon, area))
+      },
+      (err) => { setLocating(false); setGeoError(GEO_ERRORS[err.code] ?? GEO_ERRORS[2]!) },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     )
   }
@@ -81,11 +91,12 @@ export default function LocationPicker({ idPrefix, place, onPlace }: Props) {
       </div>
       <div>
         <button type="button" className="btn secondary" onClick={() => setConsent(true)}><LocateFixed size={18} aria-hidden="true" />Use my location</button>
+        {locating && <p className="hint" role="status">Finding your location…</p>}
         {geoError && <p className="error" role="alert">{geoError}</p>}
         <p className="hint">Laptops and desktops usually estimate location from Wi-Fi or IP and can be several km off; phones with GPS are more accurate. Air-quality data covers roughly 10 km, so if the area looks wrong, pick your city instead.</p>
       </div>
       <Modal open={consent} title="Use your location?" onClose={() => setConsent(false)}>
-        <p>AirWise will ask your browser for your location once, round it to about 1 km, and use it only to fetch air quality for that area. It is not stored or sent anywhere except the Open-Meteo data service as rounded coordinates.</p>
+        <p>AirWise will ask your browser for your location once, round it to about 1 km, and use it only to fetch air quality for that area. The rounded coordinates (not your exact position) go to Open-Meteo for air quality and to OpenStreetMap Nominatim to look up the place name; if that lookup fails, the nearest city name is used instead. Nothing is stored.</p>
         <div className="row">
           <button type="button" className="btn" onClick={locate}>Continue</button>
           <button type="button" className="btn secondary" onClick={() => setConsent(false)}>Not now</button>

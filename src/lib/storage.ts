@@ -31,10 +31,14 @@ export function nearestCity(lat: number, lon: number, maxKm = 60): Place | null 
   return best
 }
 
-/** A device-detected place: coordinates rounded to ~1 km, labelled by the nearest preset city when there is one. */
-export function geoPlace(lat: number, lon: number): Place {
+/**
+ * A device-detected place: coordinates rounded to ~1 km. Named by the reverse-geocoded `area` when given,
+ * otherwise by the nearest preset city, otherwise generically.
+ */
+export function geoPlace(lat: number, lon: number, area?: string | null): Place {
   const near = nearestCity(lat, lon)
-  return { name: near ? `Near ${near.name} (approx.)` : 'Your location (approx.)', lat: round2(lat), lon: round2(lon), kind: 'geo' }
+  const name = area ? `${area} (approx.)` : near ? `Near ${near.name} (approx.)` : 'Your location (approx.)'
+  return { name, lat: round2(lat), lon: round2(lon), kind: 'geo' }
 }
 
 export const DEFAULT_PROFILE: Profile = {
