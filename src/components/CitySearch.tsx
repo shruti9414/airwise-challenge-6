@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import type { Place } from '../types'
 import { type GeoResult, searchPlaces } from '../lib/airData'
+import { roundTo } from '../lib/util'
 import { useDebounced } from '../hooks'
 
 const MIN_QUERY = 2
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** Debounced search over any Indian city, with a live status region and a result list. */
 export default function CitySearch({ idPrefix, onPlace }: { idPrefix: string; onPlace: (p: Place) => void }) {
@@ -27,7 +27,7 @@ export default function CitySearch({ idPrefix, onPlace }: { idPrefix: string; on
   const current = debounced.length >= MIN_QUERY && results?.q === debounced ? results.items : null
 
   const choose = (r: GeoResult) => {
-    onPlace({ name: r.name, lat: round2(r.lat), lon: round2(r.lon), kind: 'city' })
+    onPlace({ name: r.name, lat: roundTo(r.lat, 2), lon: roundTo(r.lon, 2), kind: 'city' })
     setQuery('')
   }
 

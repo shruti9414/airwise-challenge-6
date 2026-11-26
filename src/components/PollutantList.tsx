@@ -1,5 +1,5 @@
-import type { Pollutant, Reading } from '../types'
-import { POLLUTANT_LABEL, POLLUTANT_UNIT, bandFor, subIndex, toDisplayUnit } from '../lib/aqi'
+import type { Reading } from '../types'
+import { POLLUTANTS, POLLUTANT_LABEL, POLLUTANT_UNIT, bandFor, subIndex, toDisplayUnit } from '../lib/aqi'
 
 /** Averaged concentration and CPCB sub-index for each pollutant, with the averaging note. */
 export default function PollutantList({ reading }: { reading: Reading }) {
@@ -7,7 +7,7 @@ export default function PollutantList({ reading }: { reading: Reading }) {
     <>
       <h3>Pollutants</h3>
       <ul className="pollutants">
-        {(Object.keys(POLLUTANT_LABEL) as Pollutant[]).map((p) => {
+        {POLLUTANTS.map((p) => {
           const v = reading.pollutants[p]
           const sub = subIndex(p, v)
           return (

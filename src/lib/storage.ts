@@ -1,11 +1,14 @@
 import type { Activity, Commute, Place, Profile, Saved, Trip, Ventilation } from '../types'
 import { isTripMode } from './impact'
+import { isRecord, roundTo } from './util'
 
 export const STORAGE_KEY = 'airwise:v1'
 
+const DELHI: Place = { name: 'Delhi', lat: 28.61, lon: 77.21, kind: 'city' }
+
 export const CITIES: Place[] = [
   { name: 'Ahmedabad', lat: 23.03, lon: 72.58, kind: 'city' },
-  { name: 'Delhi', lat: 28.61, lon: 77.21, kind: 'city' },
+  DELHI,
   { name: 'Mumbai', lat: 19.08, lon: 72.88, kind: 'city' },
   { name: 'Bengaluru', lat: 12.97, lon: 77.59, kind: 'city' },
   { name: 'Pune', lat: 18.52, lon: 73.86, kind: 'city' },
@@ -17,7 +20,6 @@ export const CITIES: Place[] = [
 ]
 
 const KM_PER_DEGREE = 111.2
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** Nearest preset city within `maxKm`, used only to give a device location a readable name (no network call). */
 export function nearestCity(lat: number, lon: number, maxKm = 60): Place | null {
@@ -41,7 +43,7 @@ export function nearestCity(lat: number, lon: number, maxKm = 60): Place | null 
 export function geoPlace(lat: number, lon: number, area?: string | null): Place {
   const near = nearestCity(lat, lon)
   const name = area ? `${area} (approx.)` : near ? `Near ${near.name} (approx.)` : 'Your location (approx.)'
-  return { name, lat: round2(lat), lon: round2(lon), kind: 'geo' }
+  return { name, lat: roundTo(lat, 2), lon: roundTo(lon, 2), kind: 'geo' }
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -56,7 +58,7 @@ export const DEFAULT_PROFILE: Profile = {
 }
 
 export const DEFAULT_SAVED: Saved = {
-  place: CITIES[1] as Place,
+  place: DELHI,
   profile: DEFAULT_PROFILE,
   useSample: false,
   done: {},
@@ -65,15 +67,17 @@ export const DEFAULT_SAVED: Saved = {
   checklist: [],
 }
 
+const ACTIVITIES: Activity[] = ['minimal', 'walking', 'exercise', 'outdoorWork']
+const COMMUTES: Commute[] = ['car', 'twoWheeler', 'publicTransport', 'walkCycle', 'remote']
+const VENTILATIONS: Ventilation[] = ['openable', 'limited', 'acOnly']
+
 export const OPTIONS = {
-  activity: ['minimal', 'walking', 'exercise', 'outdoorWork'] as Activity[],
-  commute: ['car', 'twoWheeler', 'publicTransport', 'walkCycle', 'remote'] as Commute[],
-  ventilation: ['openable', 'limited', 'acOnly'] as Ventilation[],
+  activity: ACTIVITIES,
+  commute: COMMUTES,
+  ventilation: VENTILATIONS,
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
-const oneOf = <T extends string>(v: unknown, allowed: T[], fallback: T): T =>
-  allowed.includes(v as T) ? (v as T) : fallback
+const oneOf = <T extends string>(v: unknown, allowed: T[], fallback: T): T => allowed.find((a) => a === v) ?? fallback
 const strings = (v: unknown, max: number): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length <= 80).slice(0, max) : []
 
@@ -85,7 +89,7 @@ export function parseFamilySize(text: string): { value: number } | { error: stri
 }
 
 export function sanitizeProfile(v: unknown): Profile {
-  const o = isObj(v) ? v : {}
+  const o = isRecord(v) ? v : {}
   const d = DEFAULT_PROFILE
   const size = Number(o.familySize)
   return {
@@ -100,19 +104,20 @@ export function sanitizeProfile(v: unknown): Profile {
   }
 }
 
+const isCoordinate = (v: unknown, limit: number): v is number =>
+  typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= limit
+
 function sanitizePlace(v: unknown): Place {
-  const known = isObj(v) ? CITIES.find((c) => c.name === v.name) : undefined
+  const known = isRecord(v) ? CITIES.find((c) => c.name === v.name) : undefined
   return (
     known ??
-    (isObj(v) &&
+    (isRecord(v) &&
     v.kind === 'city' &&
     typeof v.name === 'string' &&
     v.name.length <= 60 &&
-    Number.isFinite(v.lat) &&
-    Number.isFinite(v.lon) &&
-    Math.abs(v.lat as number) <= 90 &&
-    Math.abs(v.lon as number) <= 180
-      ? { name: v.name, lat: Number(v.lat), lon: Number(v.lon), kind: 'city' }
+    isCoordinate(v.lat, 90) &&
+    isCoordinate(v.lon, 180)
+      ? { name: v.name, lat: v.lat, lon: v.lon, kind: 'city' }
       : DEFAULT_SAVED.place)
   )
 }
@@ -121,7 +126,7 @@ function sanitizeTrips(v: unknown): Trip[] {
   if (!Array.isArray(v)) return []
   return v
     .flatMap((t): Trip[] =>
-      isObj(t) &&
+      isRecord(t) &&
       typeof t.id === 'string' &&
       typeof t.date === 'string' &&
       /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
@@ -136,7 +141,7 @@ function sanitizeTrips(v: unknown): Trip[] {
 }
 
 function sanitizeDone(v: unknown): Record<string, string[]> {
-  if (!isObj(v)) return {}
+  if (!isRecord(v)) return {}
   const entries = Object.entries(v)
     .filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))
     .sort(([a], [b]) => a.localeCompare(b))
@@ -145,7 +150,7 @@ function sanitizeDone(v: unknown): Record<string, string[]> {
 }
 
 export function sanitizeSaved(v: unknown): Saved {
-  const o = isObj(v) ? v : {}
+  const o = isRecord(v) ? v : {}
   return {
     place: sanitizePlace(o.place),
     profile: sanitizeProfile(o.profile),

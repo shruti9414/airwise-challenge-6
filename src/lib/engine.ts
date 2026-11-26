@@ -9,11 +9,11 @@ export interface Context {
   now?: number
 }
 
+/** Band indexes used by the rules: Moderate = 2, Poor = 3 (Good = 0 .. Severe = 5). */
+export const BAND_LEVEL = { moderate: 2, poor: 3 }
+
 export const isSensitive = (p: Profile) => p.children || p.elderly || p.respiratory
-export const bandIndex = (b: BandId | null) => (b === null ? 2 : BANDS.findIndex((x) => x.id === b))
+export const bandIndex = (b: BandId | null) => (b === null ? BAND_LEVEL.moderate : BANDS.findIndex((x) => x.id === b))
 export const label = (b: BandId | null) => BANDS[bandIndex(b)]?.label ?? 'Unknown'
-export const add = (list: string[], cond: unknown, text: string) => {
-  if (cond) list.push(text)
-}
 
 export const assess = (data: AirData, profile: Profile): Context => ({ data, reading: currentReading(data), profile })

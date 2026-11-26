@@ -2,7 +2,17 @@ import { useState } from 'react'
 import { Leaf, Plus, Trash2 } from 'lucide-react'
 import type { Profile, Trip, TripMode } from '../types'
 import { alternativesFor } from '../lib/content'
-import { CAR_FACTOR, MODE_FACTOR, MODE_LABEL, POINTS, dayKey, validateTrip, weeklyImpact } from '../lib/impact'
+import {
+  CAR_FACTOR,
+  MODE_FACTOR,
+  MODE_LABEL,
+  POINTS,
+  TRIP_MODES,
+  dayKey,
+  isTripMode,
+  validateTrip,
+  weeklyImpact,
+} from '../lib/impact'
 import { BANDS } from '../lib/aqi'
 import type { BandId } from '../types'
 
@@ -107,8 +117,8 @@ export function ImpactTracker({ done, trips, onTrips }: Props) {
         <h4>Log a low-emission trip</h4>
         <div className="field">
           <label htmlFor="trip-mode">How did you travel?</label>
-          <select id="trip-mode" value={mode} onChange={(e) => setMode(e.target.value as TripMode)}>
-            {(Object.keys(MODE_FACTOR) as TripMode[]).map((m) => (
+          <select id="trip-mode" value={mode} onChange={(e) => isTripMode(e.target.value) && setMode(e.target.value)}>
+            {TRIP_MODES.map((m) => (
               <option key={m} value={m}>
                 {MODE_LABEL[m]}
               </option>

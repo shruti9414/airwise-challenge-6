@@ -1,8 +1,7 @@
 import { Moon, Sun, Sunrise, Sunset } from 'lucide-react'
-import type { Period } from '../types'
 import type { Context } from '../lib/engine'
 import { buildRoutine } from '../lib/routine'
-import { PERIODS, currentHour, periodOf, periodOutlook } from '../lib/outlook'
+import { PERIODS, PERIOD_IDS, currentHour, periodOf, periodOutlook } from '../lib/outlook'
 import { BandBadge, Empty } from './ui'
 
 const ICONS = { morning: Sunrise, afternoon: Sun, evening: Sunset, night: Moon }
@@ -27,7 +26,7 @@ export default function Routine({ ctx, list }: { ctx: Context | null; list: Chec
         <progress id="plan-progress" max={all.length} value={doneCount} />
       </div>
       <div className="period-grid">
-        {(Object.keys(PERIODS) as Period[]).map((p) => {
+        {PERIOD_IDS.map((p) => {
           const Icon = ICONS[p]
           const out = periodOutlook(ctx.data, p)
           return (

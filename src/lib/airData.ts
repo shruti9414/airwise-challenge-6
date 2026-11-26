@@ -1,5 +1,6 @@
-import type { AirData, Place, Pollutant, Pollutants, Weather } from '../types'
-import { averagedPollutants, computeReading } from './aqi'
+import type { AirData, Place, Pollutants, Weather } from '../types'
+import { NO_POLLUTANTS, POLLUTANTS, averagedPollutants, computeReading } from './aqi'
+import { isRecord } from './util'
 
 const AQ_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast'
@@ -78,27 +79,25 @@ async function fetchWeather(place: Place, signal?: AbortSignal): Promise<Weather
 
 const cacheKey = (p: Place) => `${CACHE_PREFIX}${p.lat.toFixed(2)},${p.lon.toFixed(2)}`
 
-const POLLUTANT_KEYS: Pollutant[] = ['pm25', 'pm10', 'no2', 'o3', 'so2', 'co']
+const TIME_FORMAT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
 /** Strict shape check for cached data: anything corrupted, truncated or tampered is rejected. */
 export function isValidAirData(v: unknown): v is AirData {
-  const d = v as Partial<AirData> | null
-  if (typeof d !== 'object' || d === null || d.source !== 'live' || !isNum(d.observedAt) || !isNum(d.fetchedAt))
+  if (!isRecord(v) || v.source !== 'live' || !isNum(v.observedAt) || !isNum(v.fetchedAt)) return false
+  const { times, hourly, nowIndex, weather } = v
+  if (!Array.isArray(times) || !Array.isArray(hourly) || times.length === 0 || times.length !== hourly.length) {
     return false
-  if (!Array.isArray(d.times) || !Array.isArray(d.hourly) || d.times.length === 0 || d.times.length !== d.hourly.length)
+  }
+  if (!times.every((t) => typeof t === 'string' && TIME_FORMAT.test(t))) return false
+  if (!hourly.every((h) => isRecord(h) && POLLUTANTS.every((p) => h[p] === null || isNum(h[p])))) return false
+  if (typeof nowIndex !== 'number' || !Number.isInteger(nowIndex) || nowIndex < 0 || nowIndex >= times.length) {
     return false
-  if (!d.times.every((t) => typeof t === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(t))) return false
-  if (
-    !d.hourly.every(
-      (h) => typeof h === 'object' && h !== null && POLLUTANT_KEYS.every((k) => h[k] === null || isNum(h[k])),
-    )
+  }
+  return (
+    weather === null ||
+    (isRecord(weather) && isNum(weather.temperature) && isNum(weather.humidity) && isNum(weather.windSpeed))
   )
-    return false
-  if (!Number.isInteger(d.nowIndex) || (d.nowIndex as number) < 0 || (d.nowIndex as number) >= d.times.length)
-    return false
-  const w = d.weather
-  return w === null || (typeof w === 'object' && isNum(w.temperature) && isNum(w.humidity) && isNum(w.windSpeed))
 }
 
 export function readCache(place: Place, now = Date.now()): { data: AirData; fresh: boolean } | null {
@@ -150,9 +149,8 @@ export function sampleData(now = new Date()): AirData {
   const hourly: Pollutants[] = []
   for (let offset = -1; offset <= 1; offset++) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
-    for (let hr = 0; hr < 24; hr++) {
+    SAMPLE_PM25.forEach((pm25, hr) => {
       times.push(`${day(d)}T${pad(hr)}:00`)
-      const pm25 = SAMPLE_PM25[hr] as number
       hourly.push({
         pm25,
         pm10: Math.round(pm25 * 1.7),
@@ -161,7 +159,7 @@ export function sampleData(now = new Date()): AirData {
         so2: 14,
         co: Math.round(pm25 * 8),
       })
-    }
+    })
   }
   const t = now.getTime()
   return {
@@ -182,7 +180,7 @@ export const currentReading = (d: AirData) => computeReading(averagedPollutants(
  * Hourly outlook index from one hour's modelled concentrations. Not a CPCB AQI: it exists only to show how
  * conditions vary through the day (trend, cleanest window, period outlook), which rolling averages would hide.
  */
-export const outlookAt = (d: AirData, i: number) => computeReading(d.hourly[i] as Pollutants)
+export const outlookAt = (d: AirData, i: number) => computeReading(d.hourly[i] ?? NO_POLLUTANTS)
 
 export const REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse'
 
@@ -197,8 +195,12 @@ export async function reverseGeocode(lat: number, lon: number, signal?: AbortSig
       { signal, referrerPolicy: 'origin' },
     )
     if (!res.ok) return null
-    const address = ((await res.json()) as { address?: Record<string, unknown> } | null)?.address ?? {}
-    const text = (k: string) => (typeof address[k] === 'string' ? (address[k] as string).trim() : '')
+    const body: unknown = await res.json()
+    const address = isRecord(body) && isRecord(body.address) ? body.address : {}
+    const text = (key: string) => {
+      const value = address[key]
+      return typeof value === 'string' ? value.trim() : ''
+    }
     const area = ['city', 'town', 'village', 'municipality', 'state_district', 'county'].map(text).find(Boolean)
     if (!area) return null
     const state = text('state')

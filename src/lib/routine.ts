@@ -2,6 +2,7 @@ import type { Guidance, Period, Routine, RoutineItem } from '../types'
 import { guidanceFor } from './aqi'
 import { bandIndex, label, isSensitive, type Context } from './engine'
 import { bestWindow, fmtHour, periodOutlook } from './outlook'
+import { compact } from './util'
 
 export function buildRoutine({ data, reading, profile }: Context): Routine {
   const sensitive = isSensitive(profile)
@@ -23,7 +24,7 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
   const n = ctxFor('night')
   const out = (g: Guidance, hi: string, mid: string, lo: string) => (g === 'normal' ? hi : g === 'reduce' ? mid : lo)
 
-  const morning = [
+  const morning = compact<RoutineItem>([
     item(
       'exposure:morning-outdoor',
       out(
@@ -63,9 +64,9 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
         'If you must travel, wear a well-fitted N95/FFP2 mask.',
         'Masks only help when they seal well; they reduce but do not eliminate exposure, and may not fit young children, so limit their time outdoors instead.',
       ),
-  ].filter(Boolean) as RoutineItem[]
+  ])
 
-  const afternoon = [
+  const afternoon = compact<RoutineItem>([
     win &&
       item(
         'exposure:afternoon-window',
@@ -90,9 +91,9 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
         'Combine errands into a single trip.',
         'One trip instead of several cuts both fuel use and your time in traffic.',
       ),
-  ].filter(Boolean) as RoutineItem[]
+  ])
 
-  const evening = [
+  const evening = compact<RoutineItem>([
     item(
       'indoor:evening-cook',
       'Switch on the kitchen exhaust while cooking.',
@@ -114,9 +115,9 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
         'Switch the engine off when waiting.',
         'Idling adds exhaust without moving you anywhere.',
       ),
-  ].filter(Boolean) as RoutineItem[]
+  ])
 
-  const night = [
+  const night = compact<RoutineItem>([
     item(
       'indoor:night-air',
       profile.purifier
@@ -137,7 +138,7 @@ export function buildRoutine({ data, reading, profile }: Context): Routine {
       'Check tomorrow’s outlook before planning school runs or exercise.',
       'A cleaner window can be planned around instead of guessed.',
     ),
-  ].filter(Boolean) as RoutineItem[]
+  ])
 
   return { morning, afternoon, evening, night }
 }

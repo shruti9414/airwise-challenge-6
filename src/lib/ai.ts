@@ -1,6 +1,7 @@
 import type { Advice, Profile, Reading } from '../types'
 import { BANDS } from './aqi'
 import { isSensitive } from './engine'
+import { isRecord } from './util'
 
 /** Pluggable provider: swap in any other LLM by implementing this one method. */
 export interface AiProvider {
@@ -94,8 +95,8 @@ const cleanList = (v: unknown, min: number, max: number): string[] | null => {
 
 /** Returns validated advice or null when the response is malformed or contains unsafe content. */
 export function validateAdvice(raw: unknown): Advice | null {
-  if (typeof raw !== 'object' || raw === null) return null
-  const o = raw as Record<string, unknown>
+  if (!isRecord(raw)) return null
+  const o = raw
   const analysis = clean(o.analysis, 500),
     meaning = clean(o.meaning, 500),
     why = clean(o.why, 500)
@@ -108,8 +109,8 @@ export function validateAdvice(raw: unknown): Advice | null {
 }
 
 export function validateAnswer(raw: unknown): ChatAnswer | null {
-  if (typeof raw !== 'object' || raw === null) return null
-  const o = raw as Record<string, unknown>
+  if (!isRecord(raw)) return null
+  const o = raw
   const answer = clean(o.answer, 900),
     steps = cleanList(o.steps ?? [], 0, 5)
   return answer && steps ? { answer, steps } : null

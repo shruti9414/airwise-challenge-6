@@ -3,6 +3,7 @@ import { LocateFixed } from 'lucide-react'
 import type { Place } from '../types'
 import { reverseGeocode } from '../lib/airData'
 import { CITIES, geoPlace } from '../lib/storage'
+import { roundTo } from '../lib/util'
 import CitySearch from './CitySearch'
 import { Modal } from './ui'
 
@@ -12,16 +13,17 @@ interface Props {
   onPlace: (p: Place) => void
 }
 
+const GEO_UNAVAILABLE = 'Your device could not work out its location. Choose a city instead.'
+
 /** Keyed by GeolocationPositionError.code. */
 const GEO_ERRORS: Record<number, string> = {
   1: 'Location permission was denied. Allow location for this site in your browser settings, or choose a city instead.',
-  2: 'Your device could not work out its location. Choose a city instead.',
+  2: GEO_UNAVAILABLE,
   3: 'Finding your location took too long. Try again, or choose a city instead.',
 }
 
 const GEO_OPTIONS: PositionOptions = { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
 const NAME_LOOKUP_TIMEOUT_MS = 5000
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** One-shot device location: a fresh fix, rounded to ~1 km and named by a reverse lookup with a safe fallback. */
 function useDeviceLocation(onPlace: (p: Place) => void) {
@@ -34,8 +36,8 @@ function useDeviceLocation(onPlace: (p: Place) => void) {
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const lat = round2(pos.coords.latitude)
-        const lon = round2(pos.coords.longitude)
+        const lat = roundTo(pos.coords.latitude, 2)
+        const lon = roundTo(pos.coords.longitude, 2)
         const ctrl = new AbortController()
         const timer = setTimeout(() => ctrl.abort(), NAME_LOOKUP_TIMEOUT_MS)
         const area = await reverseGeocode(lat, lon, ctrl.signal)
@@ -45,7 +47,7 @@ function useDeviceLocation(onPlace: (p: Place) => void) {
       },
       (err) => {
         setLocating(false)
-        setError(GEO_ERRORS[err.code] ?? GEO_ERRORS[2]!)
+        setError(GEO_ERRORS[err.code] ?? GEO_UNAVAILABLE)
       },
       GEO_OPTIONS,
     )

@@ -1,4 +1,5 @@
 import type { Saved, Trip, TripMode } from '../types'
+import { roundTo } from './util'
 
 /** Assumed kg CO₂e per passenger-km. A petrol car is the baseline each logged trip replaces. */
 export const CAR_FACTOR = 0.15
@@ -9,6 +10,7 @@ export const MODE_FACTOR: Record<TripMode, number> = {
   carpool: 0.075,
   combined: 0,
 }
+export const TRIP_MODES: TripMode[] = ['walk', 'cycle', 'publicTransport', 'carpool', 'combined']
 export const MODE_LABEL: Record<TripMode, string> = {
   walk: 'Walk',
   cycle: 'Cycle',
@@ -53,8 +55,14 @@ export function weeklyImpact(saved: Pick<Saved, 'trips' | 'done'>, from = new Da
   const raw = trips.length * POINTS.trip + doneIds.length * POINTS.habit
   return {
     trips: trips.length,
-    km: round1(trips.reduce((s, t) => s + t.km, 0)),
-    co2Kg: round1(trips.reduce((s, t) => s + kgAvoided(t), 0)),
+    km: roundTo(
+      trips.reduce((s, t) => s + t.km, 0),
+      1,
+    ),
+    co2Kg: roundTo(
+      trips.reduce((s, t) => s + kgAvoided(t), 0),
+      1,
+    ),
     habits: doneIds.length,
     exposureHabits: doneIds.filter((id) => !id.startsWith('movement:')).length,
     score: Math.min(POINTS.cap, raw),
@@ -62,13 +70,11 @@ export function weeklyImpact(saved: Pick<Saved, 'trips' | 'done'>, from = new Da
   }
 }
 
-const round1 = (n: number) => Math.round(n * 10) / 10
-
 /** Validates a trip form entry; returns an error message or the cleaned trip fields. */
 export function validateTrip(mode: string, kmText: string): { error: string } | { mode: TripMode; km: number } {
   if (!isTripMode(mode)) return { error: 'Choose how you travelled.' }
   const km = Number(kmText)
   if (kmText.trim() === '' || !Number.isFinite(km)) return { error: 'Enter the distance in kilometres.' }
   if (km <= 0 || km > 200) return { error: 'Distance must be between 0.1 and 200 km.' }
-  return { mode, km: round1(Math.max(km, 0.1)) }
+  return { mode, km: roundTo(Math.max(km, 0.1), 1) }
 }

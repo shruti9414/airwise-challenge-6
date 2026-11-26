@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Profile } from '../types'
 import { OPTIONS, parseFamilySize } from '../lib/storage'
 
-const LABELS = {
+const LABELS: Record<'activity' | 'commute' | 'ventilation', Record<string, string>> = {
   activity: {
     minimal: 'Mostly indoors',
     walking: 'Daily walks / errands',
@@ -38,7 +38,7 @@ function Select<K extends 'activity' | 'commute' | 'ventilation'>({
       <select id={id} value={profile[name]} onChange={(e) => onChange({ ...profile, [name]: e.target.value })}>
         {OPTIONS[name].map((o) => (
           <option key={o} value={o}>
-            {(LABELS[name] as Record<string, string>)[o]}
+            {LABELS[name][o]}
           </option>
         ))}
       </select>
