@@ -13,6 +13,14 @@ Every winter, cities such as Delhi, Lucknow and Ahmedabad see severe smog. An AQ
 
 AirWise turns a live AQI reading into a personalised, explainable plan: how polluted is the air, is it safe for my family, what should I do differently today, how do I clean my indoor air, and what is the effect of my choices. Every recommendation says **why**.
 
+## Chosen vertical, persona and approach
+
+* **Vertical:** Challenge 6, Urban Air Quality Assistant (severe winter smog and urban pollution).
+* **Persona:** an urban Indian family or community that wants clear daily decisions, not just an AQI number.
+* **Approach:** a deterministic, explainable rule engine decides everything that affects health guidance (AQI band × household profile × hourly forecast). GenAI is an optional layer on top: it is given only an anonymised summary, its output is validated before display, and the rule-based answer is always the fallback. The chat box works with no key (rule-based, labelled), and uses Gemini when the user supplies their own key.
+* **Tailoring:** location (city search or device location), household (children, older adults, respiratory sensitivity, purifier), activity, commute and home ventilation all change the advice.
+* **Impact of choices:** a weekly tracker converts low-emission trips and habits into CO₂ avoided and an exposure-habit score, with the formulas shown.
+
 ## Features
 
 | Area | What it does |

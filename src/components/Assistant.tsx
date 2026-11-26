@@ -142,6 +142,7 @@ function AiPanel({ ctx }: { ctx: Context }) {
           <button className="btn" type="submit" disabled={busy}><Bot size={18} aria-hidden="true" />Get instant answer</button>
           <button className="btn secondary" type="button" disabled={busy || !ready} onClick={askGemini}><Sparkles size={18} aria-hidden="true" />{busy ? 'Thinking…' : 'Ask Gemini'}</button>
         </div>
+        <p className="hint">“Ask Gemini” is optional: it needs your own Gemini API key and consent (open “Optional: use Gemini AI” below).</p>
       </form>
 
       <details className="panel">
