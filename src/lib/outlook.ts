@@ -44,7 +44,8 @@ export function bestWindow(d: AirData): { start: number; end: number; aqi: numbe
   const byHour = new Map(todayIndexes(d).map((i) => [hourOf(d.times[i] as string), outlookAt(d, i).aqi]))
   let best: { start: number; aqi: number } | null = null
   for (let s = Math.max(6, hour); s <= 19; s++) {
-    const a = byHour.get(s), b = byHour.get(s + 1)
+    const a = byHour.get(s),
+      b = byHour.get(s + 1)
     if (a == null || b == null) continue
     const avg = (a + b) / 2
     if (!best || avg < best.aqi) best = { start: s, aqi: avg }

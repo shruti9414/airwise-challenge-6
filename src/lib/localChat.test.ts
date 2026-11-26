@@ -26,7 +26,18 @@ describe('keyless local chat', () => {
   })
 
   it('makes no guarantees and every answer passes the same validator as AI output', () => {
-    for (const q of ['school?', 'bedroom air', 'window', 'mask', 'commute', 'run outside', 'best time', 'am I safe today', 'cough', 'hello there']) {
+    for (const q of [
+      'school?',
+      'bedroom air',
+      'window',
+      'mask',
+      'commute',
+      'run outside',
+      'best time',
+      'am I safe today',
+      'cough',
+      'hello there',
+    ]) {
       for (const pm of [10, 105, 300]) expect(validateAnswer(ask(q, pm, { elderly: true }))).not.toBeNull()
     }
   })

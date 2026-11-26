@@ -6,7 +6,10 @@ import { BandBadge, Empty } from './ui'
 
 const ICONS = { morning: Sunrise, afternoon: Sun, evening: Sunset, night: Moon }
 
-export interface Checklist { done: string[]; toggle: (id: string) => void }
+export interface Checklist {
+  done: string[]
+  toggle: (id: string) => void
+}
 
 export default function Routine({ ctx, list }: { ctx: Context | null; list: Checklist }) {
   if (!ctx) return <Empty>Your daily plan appears once air-quality data is available.</Empty>
@@ -17,7 +20,9 @@ export default function Routine({ ctx, list }: { ctx: Context | null; list: Chec
   return (
     <>
       <div className="progress">
-        <label htmlFor="plan-progress">Today’s progress: {doneCount} of {all.length} actions done</label>
+        <label htmlFor="plan-progress">
+          Today’s progress: {doneCount} of {all.length} actions done
+        </label>
         <progress id="plan-progress" max={all.length} value={doneCount} />
       </div>
       <div className="period-grid">
@@ -27,7 +32,11 @@ export default function Routine({ ctx, list }: { ctx: Context | null; list: Chec
           return (
             <article key={p} className={`period${p === now ? ' current' : ''}`} aria-labelledby={`per-${p}`}>
               <header>
-                <h3 id={`per-${p}`}><Icon size={20} aria-hidden="true" />{PERIODS[p].label}{p === now && <span className="tag">Now</span>}</h3>
+                <h3 id={`per-${p}`}>
+                  <Icon size={20} aria-hidden="true" />
+                  {PERIODS[p].label}
+                  {p === now && <span className="tag">Now</span>}
+                </h3>
                 <BandBadge band={out?.band ?? null} />
               </header>
               <ul>
@@ -35,7 +44,10 @@ export default function Routine({ ctx, list }: { ctx: Context | null; list: Chec
                   <li key={i.id}>
                     <label className="check">
                       <input type="checkbox" checked={list.done.includes(i.id)} onChange={() => list.toggle(i.id)} />
-                      <span>{i.text}<small className="reason">Why: {i.reason}</small></span>
+                      <span>
+                        {i.text}
+                        <small className="reason">Why: {i.reason}</small>
+                      </span>
                     </label>
                   </li>
                 ))}

@@ -16,7 +16,13 @@ describe('AQI classification (CPCB)', () => {
     expect(bandFor(301)?.id).toBe('veryPoor')
     expect(bandFor(401)?.id).toBe('severe')
     expect(bandFor(900)?.id).toBe('severe')
-    for (const [aqi, id] of [[100, 'satisfactory'], [101, 'moderate'], [400, 'veryPoor'], [500, 'severe']] as const) expect(bandFor(aqi)?.id).toBe(id)
+    for (const [aqi, id] of [
+      [100, 'satisfactory'],
+      [101, 'moderate'],
+      [400, 'veryPoor'],
+      [500, 'severe'],
+    ] as const)
+      expect(bandFor(aqi)?.id).toBe(id)
   })
 
   it('returns null for missing or invalid values', () => {
@@ -52,37 +58,82 @@ describe('AQI classification (CPCB)', () => {
 })
 
 const full = (o: Partial<typeof none> = {}) => ({ pm25: 40, pm10: 80, no2: 30, o3: 40, so2: 10, co: 500, ...o })
-const series = (n: number, f: (i: number) => Partial<typeof none>) => Array.from({ length: n }, (_, i) => ({ ...none, ...f(i) }))
+const series = (n: number, f: (i: number) => Partial<typeof none>) =>
+  Array.from({ length: n }, (_, i) => ({ ...none, ...f(i) }))
 
 describe('CPCB averaging periods', () => {
   it('uses a trailing 24-hour mean for PM2.5, PM10, NO₂ and SO₂', () => {
-    const a = averagedPollutants(series(30, (i) => ({ pm25: i, pm10: i, no2: i, so2: i })), 29)
+    const a = averagedPollutants(
+      series(30, (i) => ({ pm25: i, pm10: i, no2: i, so2: i })),
+      29,
+    )
     for (const p of ['pm25', 'pm10', 'no2', 'so2'] as const) expect(a[p]).toBeCloseTo(17.5)
-    expect(averagedPollutants(series(24, (i) => ({ pm25: i })), 23).pm25).toBeCloseTo(11.5)
+    expect(
+      averagedPollutants(
+        series(24, (i) => ({ pm25: i })),
+        23,
+      ).pm25,
+    ).toBeCloseTo(11.5)
   })
 
   it('uses a trailing 8-hour mean for CO and O₃', () => {
-    const a = averagedPollutants(series(24, (i) => ({ pm25: i, co: i, o3: i })), 23)
+    const a = averagedPollutants(
+      series(24, (i) => ({ pm25: i, co: i, o3: i })),
+      23,
+    )
     expect(a.co).toBeCloseTo(19.5)
     expect(a.o3).toBeCloseTo(19.5)
     expect(a.pm25).toBeCloseTo(11.5)
   })
 
   it('needs 16 valid hours of 24 and 6 valid hours of 8, otherwise the pollutant is missing', () => {
-    expect(averagedPollutants(series(24, (i) => ({ pm25: i < 15 ? 10 : null })), 23).pm25).toBeNull()
-    expect(averagedPollutants(series(24, (i) => ({ pm25: i < 16 ? 10 : null })), 23).pm25).toBe(10)
-    expect(averagedPollutants(series(24, (i) => ({ co: i >= 19 ? 500 : null })), 23).co).toBeNull()
-    expect(averagedPollutants(series(24, (i) => ({ co: i >= 18 ? 500 : null })), 23).co).toBe(500)
+    expect(
+      averagedPollutants(
+        series(24, (i) => ({ pm25: i < 15 ? 10 : null })),
+        23,
+      ).pm25,
+    ).toBeNull()
+    expect(
+      averagedPollutants(
+        series(24, (i) => ({ pm25: i < 16 ? 10 : null })),
+        23,
+      ).pm25,
+    ).toBe(10)
+    expect(
+      averagedPollutants(
+        series(24, (i) => ({ co: i >= 19 ? 500 : null })),
+        23,
+      ).co,
+    ).toBeNull()
+    expect(
+      averagedPollutants(
+        series(24, (i) => ({ co: i >= 18 ? 500 : null })),
+        23,
+      ).co,
+    ).toBe(500)
   })
 
   it('ignores non-finite values and leaves missing pollutants null', () => {
-    const a = averagedPollutants(series(24, () => ({ pm25: 20, pm10: NaN })), 23)
+    const a = averagedPollutants(
+      series(24, () => ({ pm25: 20, pm10: NaN })),
+      23,
+    )
     expect(a).toMatchObject({ pm25: 20, pm10: null, no2: null, o3: null, so2: null, co: null })
   })
 
   it('has too little history at the start of a series', () => {
-    expect(averagedPollutants(series(24, () => ({ pm25: 20 })), 10).pm25).toBeNull()
-    expect(averagedPollutants(series(24, () => ({ pm25: 20 })), 15).pm25).toBe(20)
+    expect(
+      averagedPollutants(
+        series(24, () => ({ pm25: 20 })),
+        10,
+      ).pm25,
+    ).toBeNull()
+    expect(
+      averagedPollutants(
+        series(24, () => ({ pm25: 20 })),
+        15,
+      ).pm25,
+    ).toBe(20)
   })
 })
 
@@ -100,7 +151,14 @@ describe('CPCB data sufficiency for the overall AQI', () => {
   })
 
   it('maps PM10 breakpoints to category boundaries', () => {
-    for (const [c, idx] of [[50, 50], [100, 100], [250, 200], [350, 300], [430, 400]] as const) expect(subIndex('pm10', c)).toBe(idx)
+    for (const [c, idx] of [
+      [50, 50],
+      [100, 100],
+      [250, 200],
+      [350, 300],
+      [430, 400],
+    ] as const)
+      expect(subIndex('pm10', c)).toBe(idx)
   })
 })
 

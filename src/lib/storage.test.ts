@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SAVED, STORAGE_KEY, clearAllSaved, geoPlace, loadSaved, nearestCity, parseFamilySize, persist, sanitizeProfile, sanitizeSaved } from './storage'
+import {
+  DEFAULT_SAVED,
+  STORAGE_KEY,
+  clearAllSaved,
+  geoPlace,
+  loadSaved,
+  nearestCity,
+  parseFamilySize,
+  persist,
+  sanitizeProfile,
+  sanitizeSaved,
+} from './storage'
 
 beforeEach(() => localStorage.clear())
 
@@ -11,7 +22,11 @@ describe('local storage handling', () => {
   })
 
   it('round-trips valid state', () => {
-    const s = { ...DEFAULT_SAVED, joined: ['car-light'], trips: [{ id: 'a', date: '2026-11-26', mode: 'walk' as const, km: 2 }] }
+    const s = {
+      ...DEFAULT_SAVED,
+      joined: ['car-light'],
+      trips: [{ id: 'a', date: '2026-11-26', mode: 'walk' as const, km: 2 }],
+    }
     persist(s)
     expect(loadSaved()).toEqual(s)
   })
@@ -20,7 +35,10 @@ describe('local storage handling', () => {
     const s = sanitizeSaved({
       place: { name: '<script>', lat: 999, lon: 1, kind: 'city' },
       profile: { familySize: 9999, commute: 'rocket', children: 'yes' },
-      trips: [{ id: 'x', date: 'bad', mode: 'walk', km: 1 }, { id: 'y', date: '2026-11-26', mode: 'walk', km: -4 }],
+      trips: [
+        { id: 'x', date: 'bad', mode: 'walk', km: 1 },
+        { id: 'y', date: '2026-11-26', mode: 'walk', km: -4 },
+      ],
       done: { 'not-a-date': ['x'], '2026-11-26': ['ok', 5] },
       joined: 'nope',
     })
@@ -55,7 +73,9 @@ describe('local storage handling', () => {
   })
 
   it('survives a storage that throws', () => {
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full') })
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('full')
+    })
     expect(() => persist(DEFAULT_SAVED)).not.toThrow()
     spy.mockRestore()
   })

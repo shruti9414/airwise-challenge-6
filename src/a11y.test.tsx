@@ -6,8 +6,12 @@ import { STORAGE_KEY } from './lib/storage'
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
-  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
-  HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
 })
 
 /** Colour contrast needs real layout, so it is excluded here and checked separately in a browser. */

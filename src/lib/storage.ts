@@ -26,7 +26,10 @@ export function nearestCity(lat: number, lon: number, maxKm = 60): Place | null 
   let bestKm = maxKm
   for (const c of CITIES) {
     const km = Math.hypot((c.lat - lat) * KM_PER_DEGREE, (c.lon - lon) * KM_PER_DEGREE * lonScale)
-    if (km <= bestKm) { best = c; bestKm = km }
+    if (km <= bestKm) {
+      best = c
+      bestKm = km
+    }
   }
   return best
 }
@@ -42,12 +45,24 @@ export function geoPlace(lat: number, lon: number, area?: string | null): Place 
 }
 
 export const DEFAULT_PROFILE: Profile = {
-  familySize: 4, children: false, elderly: false, respiratory: false,
-  activity: 'walking', commute: 'car', ventilation: 'openable', purifier: false,
+  familySize: 4,
+  children: false,
+  elderly: false,
+  respiratory: false,
+  activity: 'walking',
+  commute: 'car',
+  ventilation: 'openable',
+  purifier: false,
 }
 
 export const DEFAULT_SAVED: Saved = {
-  place: CITIES[1] as Place, profile: DEFAULT_PROFILE, useSample: false, done: {}, trips: [], joined: [], checklist: [],
+  place: CITIES[1] as Place,
+  profile: DEFAULT_PROFILE,
+  useSample: false,
+  done: {},
+  trips: [],
+  joined: [],
+  checklist: [],
 }
 
 export const OPTIONS = {
@@ -57,7 +72,8 @@ export const OPTIONS = {
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
-const oneOf = <T extends string>(v: unknown, allowed: T[], fallback: T): T => (allowed.includes(v as T) ? (v as T) : fallback)
+const oneOf = <T extends string>(v: unknown, allowed: T[], fallback: T): T =>
+  allowed.includes(v as T) ? (v as T) : fallback
 const strings = (v: unknown, max: number): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length <= 80).slice(0, max) : []
 
@@ -74,7 +90,10 @@ export function sanitizeProfile(v: unknown): Profile {
   const size = Number(o.familySize)
   return {
     familySize: Number.isInteger(size) && size >= 1 && size <= 12 ? size : d.familySize,
-    children: o.children === true, elderly: o.elderly === true, respiratory: o.respiratory === true, purifier: o.purifier === true,
+    children: o.children === true,
+    elderly: o.elderly === true,
+    respiratory: o.respiratory === true,
+    purifier: o.purifier === true,
     activity: oneOf(o.activity, OPTIONS.activity, d.activity),
     commute: oneOf(o.commute, OPTIONS.commute, d.commute),
     ventilation: oneOf(o.ventilation, OPTIONS.ventilation, d.ventilation),
@@ -83,30 +102,58 @@ export function sanitizeProfile(v: unknown): Profile {
 
 function sanitizePlace(v: unknown): Place {
   const known = isObj(v) ? CITIES.find((c) => c.name === v.name) : undefined
-  return known ?? (isObj(v) && v.kind === 'city' && typeof v.name === 'string' && v.name.length <= 60 && Number.isFinite(v.lat) && Number.isFinite(v.lon)
-    && Math.abs(v.lat as number) <= 90 && Math.abs(v.lon as number) <= 180
-    ? { name: v.name, lat: Number(v.lat), lon: Number(v.lon), kind: 'city' } : DEFAULT_SAVED.place)
+  return (
+    known ??
+    (isObj(v) &&
+    v.kind === 'city' &&
+    typeof v.name === 'string' &&
+    v.name.length <= 60 &&
+    Number.isFinite(v.lat) &&
+    Number.isFinite(v.lon) &&
+    Math.abs(v.lat as number) <= 90 &&
+    Math.abs(v.lon as number) <= 180
+      ? { name: v.name, lat: Number(v.lat), lon: Number(v.lon), kind: 'city' }
+      : DEFAULT_SAVED.place)
+  )
 }
 
 function sanitizeTrips(v: unknown): Trip[] {
   if (!Array.isArray(v)) return []
-  return v.flatMap((t): Trip[] =>
-    isObj(t) && typeof t.id === 'string' && typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date)
-      && isTripMode(t.mode) && typeof t.km === 'number' && t.km > 0 && t.km <= 200
-      ? [{ id: t.id.slice(0, 40), date: t.date, mode: t.mode, km: t.km }] : []).slice(-100)
+  return v
+    .flatMap((t): Trip[] =>
+      isObj(t) &&
+      typeof t.id === 'string' &&
+      typeof t.date === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
+      isTripMode(t.mode) &&
+      typeof t.km === 'number' &&
+      t.km > 0 &&
+      t.km <= 200
+        ? [{ id: t.id.slice(0, 40), date: t.date, mode: t.mode, km: t.km }]
+        : [],
+    )
+    .slice(-100)
 }
 
 function sanitizeDone(v: unknown): Record<string, string[]> {
   if (!isObj(v)) return {}
-  const entries = Object.entries(v).filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort(([a], [b]) => a.localeCompare(b)).slice(-30)
+  const entries = Object.entries(v)
+    .filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-30)
   return Object.fromEntries(entries.map(([k, ids]) => [k, strings(ids, 40)]))
 }
 
 export function sanitizeSaved(v: unknown): Saved {
   const o = isObj(v) ? v : {}
   return {
-    place: sanitizePlace(o.place), profile: sanitizeProfile(o.profile), useSample: o.useSample === true,
-    done: sanitizeDone(o.done), trips: sanitizeTrips(o.trips), joined: strings(o.joined, 10), checklist: strings(o.checklist, 20),
+    place: sanitizePlace(o.place),
+    profile: sanitizeProfile(o.profile),
+    useSample: o.useSample === true,
+    done: sanitizeDone(o.done),
+    trips: sanitizeTrips(o.trips),
+    joined: strings(o.joined, 10),
+    checklist: strings(o.checklist, 20),
   }
 }
 
@@ -122,12 +169,21 @@ export function loadSaved(): Saved {
 export function persist(s: Saved): void {
   try {
     // Device-detected locations are never persisted; only named cities are.
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...s, place: s.place.kind === 'geo' ? DEFAULT_SAVED.place : s.place }))
-  } catch { /* storage unavailable or full: the app keeps working in memory */ }
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...s, place: s.place.kind === 'geo' ? DEFAULT_SAVED.place : s.place }),
+    )
+  } catch {
+    /* storage unavailable or full: the app keeps working in memory */
+  }
 }
 
 export function clearAllSaved(): void {
   try {
-    Object.keys(localStorage).filter((k) => k.startsWith('airwise:')).forEach((k) => localStorage.removeItem(k))
-  } catch { /* ignore */ }
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('airwise:'))
+      .forEach((k) => localStorage.removeItem(k))
+  } catch {
+    /* ignore */
+  }
 }

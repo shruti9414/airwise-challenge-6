@@ -13,13 +13,25 @@ describe('impact calculations', () => {
 
   it('aggregates the last 7 days only and caps the score', () => {
     const old = dayKey(new Date(2026, 10, 10))
-    const w = weeklyImpact({
-      trips: [{ id: '1', date: today, mode: 'walk', km: 2 }, { id: '2', date: old, mode: 'walk', km: 50 }],
-      done: { [today]: ['exposure:a', 'indoor:b', 'movement:c'], [old]: ['indoor:old'] },
-    }, NOW)
+    const w = weeklyImpact(
+      {
+        trips: [
+          { id: '1', date: today, mode: 'walk', km: 2 },
+          { id: '2', date: old, mode: 'walk', km: 50 },
+        ],
+        done: { [today]: ['exposure:a', 'indoor:b', 'movement:c'], [old]: ['indoor:old'] },
+      },
+      NOW,
+    )
     expect(w).toMatchObject({ trips: 1, km: 2, co2Kg: 0.3, habits: 3, exposureHabits: 2, score: 25 })
     expect(w.daily).toHaveLength(7)
-    const many = weeklyImpact({ trips: Array.from({ length: 20 }, (_, i) => ({ id: `${i}`, date: today, mode: 'walk' as const, km: 1 })), done: {} }, NOW)
+    const many = weeklyImpact(
+      {
+        trips: Array.from({ length: 20 }, (_, i) => ({ id: `${i}`, date: today, mode: 'walk' as const, km: 1 })),
+        done: {},
+      },
+      NOW,
+    )
     expect(many.score).toBe(100)
   })
 
@@ -40,7 +52,8 @@ describe('impact calculations', () => {
     expect(validateTrip('walk', '0')).toHaveProperty('error')
     expect(validateTrip('walk', '999')).toHaveProperty('error')
     expect(validateTrip('teleport', '3')).toHaveProperty('error')
-    for (const m of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) expect(validateTrip(m, '3')).toHaveProperty('error')
+    for (const m of ['toString', 'constructor', '__proto__', 'hasOwnProperty'])
+      expect(validateTrip(m, '3')).toHaveProperty('error')
     expect(validateTrip('cycle', '2.46')).toEqual({ mode: 'cycle', km: 2.5 })
   })
 })

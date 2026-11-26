@@ -16,14 +16,15 @@ export function useSaved() {
   const [saved, setSaved] = useState<Saved>(loadSaved)
   useEffect(() => persist(saved), [saved])
   const update = useCallback((patch: Partial<Saved>) => setSaved((s) => ({ ...s, ...patch })), [])
-  const reset = useCallback(() => { clearAllSaved(); setSaved(DEFAULT_SAVED) }, [])
+  const reset = useCallback(() => {
+    clearAllSaved()
+    setSaved(DEFAULT_SAVED)
+  }, [])
   return { saved, update, reset }
 }
 
 export type AirState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; data: AirData; fromCache: boolean }
+  { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: AirData; fromCache: boolean }
 
 type Result = { key: string; state: AirState }
 
@@ -39,13 +40,19 @@ export function useAirData(place: Place, useSample: boolean) {
     loadLive(place, ctrl.signal)
       .then(({ data, fromCache }) => setResult({ key, state: { status: 'ready', data, fromCache } }))
       .catch((e: unknown) => {
-        if (!ctrl.signal.aborted) setResult({ key, state: { status: 'error', message: e instanceof Error ? e.message : 'Could not load data.' } })
+        if (!ctrl.signal.aborted)
+          setResult({
+            key,
+            state: { status: 'error', message: e instanceof Error ? e.message : 'Could not load data.' },
+          })
       })
     return () => ctrl.abort()
   }, [key, place, useSample])
 
   const state: AirState = sample
     ? { status: 'ready', data: sample, fromCache: false }
-    : result?.key === key ? result.state : { status: 'loading' }
+    : result?.key === key
+      ? result.state
+      : { status: 'loading' }
   return { state, reload: useCallback(() => setAttempt((n) => n + 1), []) }
 }

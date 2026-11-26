@@ -2,9 +2,19 @@ import type { Saved, Trip, TripMode } from '../types'
 
 /** Assumed kg CO₂e per passenger-km. A petrol car is the baseline each logged trip replaces. */
 export const CAR_FACTOR = 0.15
-export const MODE_FACTOR: Record<TripMode, number> = { walk: 0, cycle: 0, publicTransport: 0.05, carpool: 0.075, combined: 0 }
+export const MODE_FACTOR: Record<TripMode, number> = {
+  walk: 0,
+  cycle: 0,
+  publicTransport: 0.05,
+  carpool: 0.075,
+  combined: 0,
+}
 export const MODE_LABEL: Record<TripMode, string> = {
-  walk: 'Walk', cycle: 'Cycle', publicTransport: 'Public transport', carpool: 'Carpool (2 people)', combined: 'Errands combined (trip saved)',
+  walk: 'Walk',
+  cycle: 'Cycle',
+  publicTransport: 'Public transport',
+  carpool: 'Carpool (2 people)',
+  combined: 'Errands combined (trip saved)',
 }
 export const POINTS = { trip: 10, habit: 5, cap: 100 }
 
@@ -15,7 +25,9 @@ export const dayKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 export const lastDays = (n: number, from = new Date()) =>
-  Array.from({ length: n }, (_, i) => dayKey(new Date(from.getFullYear(), from.getMonth(), from.getDate() - (n - 1 - i))))
+  Array.from({ length: n }, (_, i) =>
+    dayKey(new Date(from.getFullYear(), from.getMonth(), from.getDate() - (n - 1 - i))),
+  )
 
 export const kgAvoided = (t: Pick<Trip, 'mode' | 'km'>) => Math.max(0, t.km * (CAR_FACTOR - MODE_FACTOR[t.mode]))
 

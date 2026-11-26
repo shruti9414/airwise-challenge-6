@@ -11,18 +11,49 @@ export interface Band {
 /** CPCB National Air Quality Index categories and associated health statements. */
 export const BANDS: Band[] = [
   { id: 'good', label: 'Good', max: 50, health: 'Minimal impact.' },
-  { id: 'satisfactory', label: 'Satisfactory', max: 100, health: 'May cause minor breathing discomfort to sensitive people.' },
-  { id: 'moderate', label: 'Moderate', max: 200, health: 'May cause breathing discomfort to people with lung disease, asthma or heart disease, and to children and older adults.' },
-  { id: 'poor', label: 'Poor', max: 300, health: 'May cause breathing discomfort to most people on prolonged exposure.' },
+  {
+    id: 'satisfactory',
+    label: 'Satisfactory',
+    max: 100,
+    health: 'May cause minor breathing discomfort to sensitive people.',
+  },
+  {
+    id: 'moderate',
+    label: 'Moderate',
+    max: 200,
+    health:
+      'May cause breathing discomfort to people with lung disease, asthma or heart disease, and to children and older adults.',
+  },
+  {
+    id: 'poor',
+    label: 'Poor',
+    max: 300,
+    health: 'May cause breathing discomfort to most people on prolonged exposure.',
+  },
   { id: 'veryPoor', label: 'Very Poor', max: 400, health: 'May cause respiratory illness on prolonged exposure.' },
-  { id: 'severe', label: 'Severe', max: 500, health: 'Affects healthy people and seriously impacts those with existing conditions.' },
+  {
+    id: 'severe',
+    label: 'Severe',
+    max: 500,
+    health: 'Affects healthy people and seriously impacts those with existing conditions.',
+  },
 ]
 
 export const POLLUTANT_LABEL: Record<Pollutant, string> = {
-  pm25: 'PM2.5', pm10: 'PM10', no2: 'NO₂', o3: 'O₃', so2: 'SO₂', co: 'CO',
+  pm25: 'PM2.5',
+  pm10: 'PM10',
+  no2: 'NO₂',
+  o3: 'O₃',
+  so2: 'SO₂',
+  co: 'CO',
 }
 export const POLLUTANT_UNIT: Record<Pollutant, string> = {
-  pm25: 'µg/m³', pm10: 'µg/m³', no2: 'µg/m³', o3: 'µg/m³', so2: 'µg/m³', co: 'mg/m³',
+  pm25: 'µg/m³',
+  pm10: 'µg/m³',
+  no2: 'µg/m³',
+  o3: 'µg/m³',
+  so2: 'µg/m³',
+  co: 'mg/m³',
 }
 
 /** Upper concentration bound of each CPCB band (CO in mg/m³, others µg/m³); last value is a cap. */
@@ -58,7 +89,8 @@ export function subIndex(p: Pollutant, conc: number | null): number | null {
 export const bandFor = (aqi: number | null): Band | null =>
   aqi === null || !Number.isFinite(aqi) || aqi < 0 ? null : (BANDS.find((b) => aqi <= b.max) ?? (BANDS[5] as Band))
 
-export const AQI_NOTE = 'CPCB breakpoint-based AQI estimate using modelled air-quality data. Not an official CPCB station reading.'
+export const AQI_NOTE =
+  'CPCB breakpoint-based AQI estimate using modelled air-quality data. Not an official CPCB station reading.'
 
 /** CPCB averaging periods in hours: 24 h for PM2.5, PM10, NO₂, SO₂; 8 h for CO and O₃. */
 export const AVERAGING_HOURS: Record<Pollutant, number> = { pm25: 24, pm10: 24, no2: 24, so2: 24, co: 8, o3: 8 }
@@ -72,7 +104,10 @@ export function averagedPollutants(hourly: Pollutants[], end: number): Pollutant
   const out = {} as Pollutants
   for (const p of Object.keys(AVERAGING_HOURS) as Pollutant[]) {
     const hours = AVERAGING_HOURS[p]
-    const vals = hourly.slice(Math.max(0, end - hours + 1), end + 1).map((h) => h[p]).filter((v): v is number => v !== null && Number.isFinite(v))
+    const vals = hourly
+      .slice(Math.max(0, end - hours + 1), end + 1)
+      .map((h) => h[p])
+      .filter((v): v is number => v !== null && Number.isFinite(v))
     out[p] = vals.length >= Math.ceil((hours * 2) / 3) ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   }
   return out

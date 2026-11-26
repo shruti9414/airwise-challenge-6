@@ -40,11 +40,19 @@ describe('recommendation engine', () => {
 
   it('scenario 5: car commuters get public transport / carpool suggestions', () => {
     expect(buildAdvice(ctx(100, { commute: 'car' })).alternatives.join(' ')).toMatch(/public transport/)
-    expect(buildAdvice(ctx(300, { commute: 'walkCycle' })).alternatives.join(' ')).toMatch(/instead of walking or cycling/)
+    expect(buildAdvice(ctx(300, { commute: 'walkCycle' })).alternatives.join(' ')).toMatch(
+      /instead of walking or cycling/,
+    )
   })
 
   it('produces different advice for different profiles and AQI levels', () => {
-    const outputs = new Set([text(10), text(105), text(300), text(105, { elderly: true }), text(105, { commute: 'remote' })])
+    const outputs = new Set([
+      text(10),
+      text(105),
+      text(300),
+      text(105, { elderly: true }),
+      text(105, { commute: 'remote' }),
+    ])
     expect(outputs.size).toBe(5)
   })
 
@@ -75,7 +83,10 @@ describe('daily routine', () => {
   })
 
   it('adds a mask suggestion only for very poor air and skips commute items when remote', () => {
-    const ids = (pm: number, p = {}) => Object.values(buildRoutine(ctx(pm, p))).flat().map((i) => i.id)
+    const ids = (pm: number, p = {}) =>
+      Object.values(buildRoutine(ctx(pm, p)))
+        .flat()
+        .map((i) => i.id)
     expect(ids(200)).toContain('exposure:morning-mask')
     expect(ids(20)).not.toContain('exposure:morning-mask')
     expect(ids(200, { commute: 'remote' })).not.toContain('movement:morning-commute')
@@ -128,7 +139,9 @@ describe('indoor hacks and sustainable alternatives', () => {
   })
 
   it('makes no unsupported plant claims', () => {
-    const plants = rankHacks({ pmHigh: false, purifier: false, severe: false, openable: false }).find((h) => h.id === 'indoor:hack-plants')!
+    const plants = rankHacks({ pmHigh: false, purifier: false, severe: false, openable: false }).find(
+      (h) => h.id === 'indoor:hack-plants',
+    )!
     expect(plants.benefit).toMatch(/not measurable/)
   })
 

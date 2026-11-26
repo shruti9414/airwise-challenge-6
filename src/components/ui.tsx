@@ -4,7 +4,14 @@ import { CircleAlert, CircleCheck, Info, OctagonAlert, ShieldAlert, TriangleAler
 import type { Advice, BandId } from '../types'
 import { BANDS } from '../lib/aqi'
 
-const BAND_ICON = { good: CircleCheck, satisfactory: Info, moderate: CircleAlert, poor: TriangleAlert, veryPoor: ShieldAlert, severe: OctagonAlert }
+const BAND_ICON = {
+  good: CircleCheck,
+  satisfactory: Info,
+  moderate: CircleAlert,
+  poor: TriangleAlert,
+  veryPoor: ShieldAlert,
+  severe: OctagonAlert,
+}
 
 export function BandBadge({ band }: { band: BandId | null }) {
   if (!band) return <span className="badge band-none">Unavailable</span>
@@ -22,14 +29,32 @@ export function Logo() {
     <span className="logo">
       <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="9" fill="currentColor" />
-        <path d="M8 13h11a3 3 0 1 0-3-3M8 18h15a3 3 0 1 1-3 3M8 23h7" fill="none" stroke="#7fe3b5" strokeWidth="2.4" strokeLinecap="round" />
+        <path
+          d="M8 13h11a3 3 0 1 0-3-3M8 18h15a3 3 0 1 1-3 3M8 23h7"
+          fill="none"
+          stroke="#7fe3b5"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        />
       </svg>
       AirWise
     </span>
   )
 }
 
-export function Section({ id, eyebrow, title, intro, children }: { id: string; eyebrow: string; title: string; intro?: string; children: ReactNode }) {
+export function Section({
+  id,
+  eyebrow,
+  title,
+  intro,
+  children,
+}: {
+  id: string
+  eyebrow: string
+  title: string
+  intro?: string
+  children: ReactNode
+}) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="section">
       <p className="eyebrow">{eyebrow}</p>
@@ -40,9 +65,23 @@ export function Section({ id, eyebrow, title, intro, children }: { id: string; e
   )
 }
 
-export const Empty = ({ children }: { children: ReactNode }) => <p className="empty" role="status">{children}</p>
+export const Empty = ({ children }: { children: ReactNode }) => (
+  <p className="empty" role="status">
+    {children}
+  </p>
+)
 
-export function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+}: {
+  open: boolean
+  title: string
+  onClose: () => void
+  children: ReactNode
+}) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   useEffect(() => {
@@ -61,7 +100,9 @@ export function Modal({ open, title, onClose, children }: { open: boolean; title
     <dialog ref={ref} className="modal" aria-labelledby={titleId} onClose={onClose}>
       <div className="modal-head">
         <h2 id={titleId}>{title}</h2>
-        <button className="icon-btn" onClick={onClose} aria-label="Close dialog"><X size={20} aria-hidden="true" /></button>
+        <button className="icon-btn" onClick={onClose} aria-label="Close dialog">
+          <X size={20} aria-hidden="true" />
+        </button>
       </div>
       {open && children}
     </dialog>
@@ -78,15 +119,32 @@ export function AdviceView({ advice, headingLevel = 4 }: { advice: Advice; headi
   const H = `h${headingLevel}` as 'h3' | 'h4'
   return (
     <div className="advice">
-      <div><H>Situation analysis</H><p>{advice.analysis}</p></div>
-      <div><H>What the risk means</H><p>{advice.meaning}</p></div>
+      <div>
+        <H>Situation analysis</H>
+        <p>{advice.analysis}</p>
+      </div>
+      <div>
+        <H>What the risk means</H>
+        <p>{advice.meaning}</p>
+      </div>
       {ADVICE_PARTS.map(({ key, title }) => (
         <div key={key}>
           <H>{title}</H>
-          {advice[key].length ? <ul>{advice[key].map((t) => <li key={t}>{t}</li>)}</ul> : <p className="muted">Nothing specific right now.</p>}
+          {advice[key].length ? (
+            <ul>
+              {advice[key].map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">Nothing specific right now.</p>
+          )}
         </div>
       ))}
-      <div><H>Why it matters</H><p>{advice.why}</p></div>
+      <div>
+        <H>Why it matters</H>
+        <p>{advice.why}</p>
+      </div>
     </div>
   )
 }

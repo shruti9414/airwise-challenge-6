@@ -9,8 +9,13 @@ const setup = () => ({ user: userEvent.setup(), ...render(<App />) })
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
-  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
-  HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); this.dispatchEvent(new Event('close')) }
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+    this.dispatchEvent(new Event('close'))
+  }
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -19,7 +24,13 @@ describe('single-page navigation and states', () => {
     seed()
     setup()
     const nav = screen.getByRole('navigation', { name: 'Main' })
-    for (const [label, id] of [['Overview', 'overview'], ['My Daily Plan', 'plan'], ['Indoor Air', 'indoor'], ['Community', 'community'], ['Settings', 'settings']]) {
+    for (const [label, id] of [
+      ['Overview', 'overview'],
+      ['My Daily Plan', 'plan'],
+      ['Indoor Air', 'indoor'],
+      ['Community', 'community'],
+      ['Settings', 'settings'],
+    ]) {
       expect(within(nav).getByRole('link', { name: label })).toHaveAttribute('href', `#${id}`)
     }
     expect(screen.getAllByText(/not a live reading/i).length).toBeGreaterThan(0)
@@ -152,8 +163,21 @@ describe('optional Gemini integration', () => {
 
   it('labels validated AI output separately from rule-based advice and sends no location', async () => {
     seed()
-    const body = { analysis: 'Poor air today.', meaning: 'Sensitive people may feel it.', doNow: ['Stay in'], avoid: ['Running'], alternatives: ['Yoga'], why: 'Fine particles reach the lungs.' }
-    const f = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }) })
+    const body = {
+      analysis: 'Poor air today.',
+      meaning: 'Sensitive people may feel it.',
+      doNow: ['Stay in'],
+      avoid: ['Running'],
+      alternatives: ['Yoga'],
+      why: 'Fine particles reach the lungs.',
+    }
+    const f = vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }),
+      })
     vi.stubGlobal('fetch', f)
     const { user } = setup()
     expect(screen.getByText(/Rule-based advice/)).toBeInTheDocument()
@@ -200,7 +224,13 @@ describe('use my location', () => {
 
   it('names the place from the reverse-geocoding lookup and sends only rounded coordinates', async () => {
     seed()
-    const f = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ address: { state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' } }) })
+    const f = vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ address: { state_district: 'Surat', state: 'Gujarat', county: 'Majura Taluka' } }),
+      })
     vi.stubGlobal('fetch', f)
     stubGeo((ok) => ok({ coords: { latitude: 21.17021, longitude: 72.83114 } } as GeolocationPosition))
     const { user } = setup()
@@ -212,7 +242,9 @@ describe('use my location', () => {
   })
 
   it.each([
-    [1, /permission was denied/], [2, /could not work out its location/], [3, /took too long/],
+    [1, /permission was denied/],
+    [2, /could not work out its location/],
+    [3, /took too long/],
   ])('explains geolocation error code %i specifically', async (code, message) => {
     seed()
     stubGeo((_ok, fail) => fail({ code, message: '' } as GeolocationPositionError))
@@ -245,7 +277,11 @@ describe('keyless chat', () => {
 })
 
 describe('Gemini chat box', () => {
-  const reply = (body: object) => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }) })
+  const reply = (body: object) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }),
+  })
   const unlock = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.type(screen.getByLabelText('Gemini API key'), 'k'.repeat(30))
     await user.click(screen.getByLabelText(/I understand this summary and my question/))
@@ -289,7 +325,13 @@ describe('Gemini chat box', () => {
 
   it('shows a fallback message when the AI call fails, and discards unsafe output', async () => {
     seed()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(reply({ answer: '<script>x</script>', steps: [] })).mockResolvedValueOnce({ ok: false, status: 403 }))
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(reply({ answer: '<script>x</script>', steps: [] }))
+        .mockResolvedValueOnce({ ok: false, status: 403 }),
+    )
     const { user } = setup()
     await unlock(user)
     await user.type(screen.getByLabelText('Your question'), 'Is it safe outside now?')

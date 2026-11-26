@@ -21,16 +21,25 @@ export interface AnonymousContext {
   hasAirPurifier: boolean
 }
 
-export interface ChatAnswer { answer: string; steps: string[] }
+export interface ChatAnswer {
+  answer: string
+  steps: string[]
+}
 
 export function anonymise(reading: Reading, profile: Profile): AnonymousContext {
   const pm25 = reading.pollutants.pm25
-  const pmBand = pm25 === null ? 'unknown' : pm25 <= 30 ? 'low' : pm25 <= 60 ? 'moderate' : pm25 <= 120 ? 'high' : 'very high'
+  const pmBand =
+    pm25 === null ? 'unknown' : pm25 <= 30 ? 'low' : pm25 <= 60 ? 'moderate' : pm25 <= 120 ? 'high' : 'very high'
   return {
-    scale: 'Indian CPCB AQI', aqi: reading.aqi,
+    scale: 'Indian CPCB AQI',
+    aqi: reading.aqi,
     category: BANDS.find((b) => b.id === reading.band)?.label ?? 'unknown',
-    pm25Band: pmBand, vulnerableMemberPresent: isSensitive(profile),
-    outdoorActivity: profile.activity, commute: profile.commute, homeVentilation: profile.ventilation, hasAirPurifier: profile.purifier,
+    pm25Band: pmBand,
+    vulnerableMemberPresent: isSensitive(profile),
+    outdoorActivity: profile.activity,
+    commute: profile.commute,
+    homeVentilation: profile.ventilation,
+    hasAirPurifier: profile.purifier,
   }
 }
 
@@ -58,14 +67,17 @@ export function checkQuestion(text: string): { question: string } | { error: str
   const q = text.replace(/\s+/g, ' ').trim()
   if (q.length < 5) return { error: 'Type a question of at least 5 characters.' }
   if (q.length > MAX_QUESTION) return { error: `Keep your question under ${MAX_QUESTION} characters.` }
-  if (/\S+@\S+\.\S+/.test(q) || /\d[\d\s-]{6,}\d/.test(q)) return { error: 'Remove emails, phone numbers or ID numbers; they would be sent to the AI provider.' }
+  if (/\S+@\S+\.\S+/.test(q) || /\d[\d\s-]{6,}\d/.test(q))
+    return { error: 'Remove emails, phone numbers or ID numbers; they would be sent to the AI provider.' }
   return { question: q }
 }
 
-const UNSAFE = /<[^>]*>|https?:\/\/|javascript:|\b(guarantee[sd]?|cures?|100% (safe|protect)|completely (safe|protect))/i
+const UNSAFE =
+  /<[^>]*>|https?:\/\/|javascript:|\b(guarantee[sd]?|cures?|100% (safe|protect)|completely (safe|protect))/i
 
 /** Honest disclaimers such as "cannot guarantee safety" are fine; only affirmative claims are blocked. */
-const NEGATED_CLAIM = /\b(?:cannot|can't|can not|not|no|never|nor|unable to|without)\b[^.;!?]{0,40}?\b(?:guarantee|cure)s?\b/gi
+const NEGATED_CLAIM =
+  /\b(?:cannot|can't|can not|not|no|never|nor|unable to|without)\b[^.;!?]{0,40}?\b(?:guarantee|cure)s?\b/gi
 
 const clean = (s: unknown, max: number): string | null => {
   if (typeof s !== 'string') return null
@@ -84,15 +96,22 @@ const cleanList = (v: unknown, min: number, max: number): string[] | null => {
 export function validateAdvice(raw: unknown): Advice | null {
   if (typeof raw !== 'object' || raw === null) return null
   const o = raw as Record<string, unknown>
-  const analysis = clean(o.analysis, 500), meaning = clean(o.meaning, 500), why = clean(o.why, 500)
-  const doNow = cleanList(o.doNow, 1, 6), avoid = cleanList(o.avoid, 1, 6), alternatives = cleanList(o.alternatives, 1, 6)
-  return analysis && meaning && why && doNow && avoid && alternatives ? { analysis, meaning, doNow, avoid, alternatives, why } : null
+  const analysis = clean(o.analysis, 500),
+    meaning = clean(o.meaning, 500),
+    why = clean(o.why, 500)
+  const doNow = cleanList(o.doNow, 1, 6),
+    avoid = cleanList(o.avoid, 1, 6),
+    alternatives = cleanList(o.alternatives, 1, 6)
+  return analysis && meaning && why && doNow && avoid && alternatives
+    ? { analysis, meaning, doNow, avoid, alternatives, why }
+    : null
 }
 
 export function validateAnswer(raw: unknown): ChatAnswer | null {
   if (typeof raw !== 'object' || raw === null) return null
   const o = raw as Record<string, unknown>
-  const answer = clean(o.answer, 900), steps = cleanList(o.steps ?? [], 0, 5)
+  const answer = clean(o.answer, 900),
+    steps = cleanList(o.steps ?? [], 0, 5)
   return answer && steps ? { answer, steps } : null
 }
 
@@ -104,34 +123,59 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export const geminiProvider = (apiKey: string): AiProvider => ({
   name: 'Google Gemini',
   async generate(prompt, signal) {
-    const request = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
-      }),
-    })
+    const request = () =>
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
+        }),
+      })
     let res = await request()
     if (res.status === 503 || res.status === 429) {
       await wait(1500)
       res = await request()
     }
-    if (!res.ok) throw new Error(res.status === 400 || res.status === 403 ? 'The API key was rejected.' : res.status === 503 ? 'The AI service is busy right now. Try again shortly.' : `The AI service returned status ${res.status}.`)
-    const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] }
-    const text = (body.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('')
+    if (!res.ok)
+      throw new Error(
+        res.status === 400 || res.status === 403
+          ? 'The API key was rejected.'
+          : res.status === 503
+            ? 'The AI service is busy right now. Try again shortly.'
+            : `The AI service returned status ${res.status}.`,
+      )
+    const body = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[]
+    }
+    const text = (body.candidates?.[0]?.content?.parts ?? [])
+      .filter((p) => !p.thought)
+      .map((p) => p.text ?? '')
+      .join('')
     return JSON.parse(text || 'null')
   },
 })
 
-async function run<T>(provider: AiProvider, prompt: string, validate: (raw: unknown) => T | null, timeoutMs: number): Promise<{ value: T } | { error: string }> {
+async function run<T>(
+  provider: AiProvider,
+  prompt: string,
+  validate: (raw: unknown) => T | null,
+  timeoutMs: number,
+): Promise<{ value: T } | { error: string }> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const value = validate(await provider.generate(prompt, ctrl.signal))
     return value ? { value } : { error: 'The AI response failed safety validation and was discarded.' }
   } catch (e) {
-    return { error: ctrl.signal.aborted ? 'The AI request timed out.' : e instanceof Error && e.message ? e.message : 'The AI request failed.' }
+    return {
+      error: ctrl.signal.aborted
+        ? 'The AI request timed out.'
+        : e instanceof Error && e.message
+          ? e.message
+          : 'The AI request failed.',
+    }
   } finally {
     clearTimeout(timer)
   }
@@ -140,12 +184,21 @@ async function run<T>(provider: AiProvider, prompt: string, validate: (raw: unkn
 export type AiResult = { ok: true; advice: Advice } | { ok: false; error: string }
 export type ChatResult = { ok: true; answer: ChatAnswer } | { ok: false; error: string }
 
-export async function requestAiAdvice(provider: AiProvider, context: AnonymousContext, timeoutMs = 30_000): Promise<AiResult> {
+export async function requestAiAdvice(
+  provider: AiProvider,
+  context: AnonymousContext,
+  timeoutMs = 30_000,
+): Promise<AiResult> {
   const r = await run(provider, advicePrompt(context), validateAdvice, timeoutMs)
   return 'value' in r ? { ok: true, advice: r.value } : { ok: false, error: r.error }
 }
 
-export async function requestAiAnswer(provider: AiProvider, context: AnonymousContext, question: string, timeoutMs = 30_000): Promise<ChatResult> {
+export async function requestAiAnswer(
+  provider: AiProvider,
+  context: AnonymousContext,
+  question: string,
+  timeoutMs = 30_000,
+): Promise<ChatResult> {
   const r = await run(provider, chatPrompt(context, question), validateAnswer, timeoutMs)
   return 'value' in r ? { ok: true, answer: r.value } : { ok: false, error: r.error }
 }

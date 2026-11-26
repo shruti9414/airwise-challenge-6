@@ -1,15 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CACHE_TTL_MS, currentReading, isStale, isValidAirData, loadLive, parseAirQuality, readCache, reverseGeocode, sampleData, searchPlaces } from './airData'
+import {
+  CACHE_TTL_MS,
+  currentReading,
+  isStale,
+  isValidAirData,
+  loadLive,
+  parseAirQuality,
+  readCache,
+  reverseGeocode,
+  sampleData,
+  searchPlaces,
+} from './airData'
 import type { Place } from '../types'
 
 const place: Place = { name: 'Delhi', lat: 28.61, lon: 77.21, kind: 'city' }
-const hours = (n: number) => Array.from({ length: n }, (_, i) => `2026-11-${i < 24 ? 25 : 26}T${String(i % 24).padStart(2, '0')}:00`)
+const hours = (n: number) =>
+  Array.from({ length: n }, (_, i) => `2026-11-${i < 24 ? 25 : 26}T${String(i % 24).padStart(2, '0')}:00`)
 const payload = (pm25 = 120) => ({
   utc_offset_seconds: 19800,
   current: { time: '2026-11-26T10:00' },
   hourly: {
-    time: hours(48), pm2_5: Array(48).fill(pm25), pm10: Array(48).fill(200), nitrogen_dioxide: Array(48).fill(40),
-    ozone: Array(48).fill(30), sulphur_dioxide: Array(48).fill(10), carbon_monoxide: Array(48).fill(600),
+    time: hours(48),
+    pm2_5: Array(48).fill(pm25),
+    pm10: Array(48).fill(200),
+    nitrogen_dioxide: Array(48).fill(40),
+    ozone: Array(48).fill(30),
+    sulphur_dioxide: Array(48).fill(10),
+    carbon_monoxide: Array(48).fill(600),
   },
 })
 const CACHE_KEY = 'airwise:cache:28.61,77.21'
@@ -43,7 +60,8 @@ describe('air data parsing', () => {
 
   it('shows the AQI as unavailable with fewer than three pollutants', () => {
     const p = payload()
-    for (const k of ['nitrogen_dioxide', 'ozone', 'sulphur_dioxide', 'carbon_monoxide'] as const) p.hourly[k] = Array(48).fill(null)
+    for (const k of ['nitrogen_dioxide', 'ozone', 'sulphur_dioxide', 'carbon_monoxide'] as const)
+      p.hourly[k] = Array(48).fill(null)
     expect(currentReading(parseAirQuality(p, null, 0)).aqi).toBeNull()
   })
 
@@ -61,8 +79,15 @@ describe('air data parsing', () => {
 
 describe('live loading, caching and errors', () => {
   it('fetches, caches, then serves from cache without another request', async () => {
-    const fetchMock = vi.fn().mockImplementation(async (url: string) =>
-      ok(url.includes('air-quality') ? payload() : { current: { temperature_2m: 10, relative_humidity_2m: 50, wind_speed_10m: 3 } }))
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (url: string) =>
+        ok(
+          url.includes('air-quality')
+            ? payload()
+            : { current: { temperature_2m: 10, relative_humidity_2m: 50, wind_speed_10m: 3 } },
+        ),
+      )
     vi.stubGlobal('fetch', fetchMock)
     const first = await loadLive(place)
     expect(first.fromCache).toBe(false)
@@ -79,16 +104,27 @@ describe('live loading, caching and errors', () => {
   })
 
   it('falls back to older cached data when the network fails', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (u: string) => ok(u.includes('air-quality') ? payload() : {})))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (u: string) => ok(u.includes('air-quality') ? payload() : {})),
+    )
     const { data } = await loadLive(place)
-    localStorage.setItem('airwise:cache:28.61,77.21', JSON.stringify({ ...data, fetchedAt: Date.now() - 2 * CACHE_TTL_MS }))
+    localStorage.setItem(
+      'airwise:cache:28.61,77.21',
+      JSON.stringify({ ...data, fetchedAt: Date.now() - 2 * CACHE_TTL_MS }),
+    )
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
     const r = await loadLive(place)
     expect(r.fromCache).toBe(true)
     expect(readCache(place)?.fresh).toBe(false)
   })
 
-  it.each([['unreadable JSON', '{bad'], ['null', 'null'], ['an array', '[]'], ['a string', '"x"']])('ignores a cache entry that is %s', (_, raw) => {
+  it.each([
+    ['unreadable JSON', '{bad'],
+    ['null', 'null'],
+    ['an array', '[]'],
+    ['a string', '"x"'],
+  ])('ignores a cache entry that is %s', (_, raw) => {
     localStorage.setItem(CACHE_KEY, raw)
     expect(readCache(place)).toBeNull()
   })
@@ -118,7 +154,10 @@ describe('live loading, caching and errors', () => {
 
   it('refetches instead of using a corrupt cache entry', async () => {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ source: 'live', hourly: 'oops' }))
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (u: string) => ok(u.includes('air-quality') ? payload() : {})))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (u: string) => ok(u.includes('air-quality') ? payload() : {})),
+    )
     const r = await loadLive(place)
     expect(r.fromCache).toBe(false)
     expect(r.data.hourly).toHaveLength(48)
@@ -147,7 +186,9 @@ describe('staleness and sample mode', () => {
 
 describe('city search', () => {
   it('skips very short queries and maps results', async () => {
-    const f = vi.fn().mockResolvedValue(ok({ results: [{ name: 'Surat', latitude: 21.17, longitude: 72.83, admin1: 'Gujarat' }] }))
+    const f = vi
+      .fn()
+      .mockResolvedValue(ok({ results: [{ name: 'Surat', latitude: 21.17, longitude: 72.83, admin1: 'Gujarat' }] }))
     vi.stubGlobal('fetch', f)
     expect(await searchPlaces('s')).toEqual([])
     expect(f).not.toHaveBeenCalled()
