@@ -62,13 +62,16 @@ export function validateAdvice(raw: unknown): Advice | null {
   return analysis && meaning && why && doNow && avoid && alternatives ? { analysis, meaning, doNow, avoid, alternatives, why } : null
 }
 
-export const MODEL = 'gemini-flash-latest'
+export const MODEL = 'gemini-flash-lite-latest'
 
 /** Gemini via the browser. The key is passed in memory per call and never stored. */
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Gemini via the browser. The key is passed in memory per call and never stored. Retries once when the service is busy. */
 export const geminiProvider = (apiKey: string): AiProvider => ({
   name: 'Google Gemini',
   async generate(context, signal) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    const request = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: 'POST', signal,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
@@ -76,15 +79,21 @@ export const geminiProvider = (apiKey: string): AiProvider => ({
         generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
       }),
     })
-    if (!res.ok) throw new Error(res.status === 400 || res.status === 403 ? 'The API key was rejected.' : `The AI service returned status ${res.status}.`)
-    const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
-    return JSON.parse(body.candidates?.[0]?.content?.parts?.[0]?.text ?? 'null')
+    let res = await request()
+    if (res.status === 503 || res.status === 429) {
+      await wait(1500)
+      res = await request()
+    }
+    if (!res.ok) throw new Error(res.status === 400 || res.status === 403 ? 'The API key was rejected.' : res.status === 503 ? 'The AI service is busy right now. Try again shortly.' : `The AI service returned status ${res.status}.`)
+    const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] }
+    const text = (body.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('')
+    return JSON.parse(text || 'null')
   },
 })
 
 export type AiResult = { ok: true; advice: Advice } | { ok: false; error: string }
 
-export async function requestAiAdvice(provider: AiProvider, context: AnonymousContext, timeoutMs = 20_000): Promise<AiResult> {
+export async function requestAiAdvice(provider: AiProvider, context: AnonymousContext, timeoutMs = 30_000): Promise<AiResult> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
